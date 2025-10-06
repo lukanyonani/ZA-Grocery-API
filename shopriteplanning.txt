@@ -1,0 +1,6 @@
+in shoprite this url is the no category all products url page 1 - @https://www.shoprite.co.za/c-2413/All-Departments/Food?q=%3Arelevance%3AbrowseAllStoresFacetOff%3AbrowseAllStoresFacetOff&page=0 
+
+
+page 2 - @https://www.shoprite.co.za/c-2413/All-Departments/Food?q=%3Arelevance%3AbrowseAllStoresFacetOff%3AbrowseAllStoresFacetOff&page=1 
+
+make a new api endpoint callled shoprite all products then pass in the number for pagnation by default number is zero 

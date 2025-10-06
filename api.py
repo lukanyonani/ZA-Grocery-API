@@ -17,6 +17,7 @@ from psycopg2.extras import RealDictCursor
 import json
 import time
 import hashlib
+# Import scheduled scraper functions (moved to avoid circular import)
 
 # Import your scrapers
 from pnp_scraper import PnPScraper
@@ -375,7 +376,33 @@ async def root():
             "price_changes": "/api/price-changes",
             "categories": "/api/categories",
             "stats": "/api/stats",
-            "scrape_status": "/api/scrape-status"
+            "scrape_status": "/api/scrape-status",
+            "shoprite_all_products": "/api/shoprite/all-products",
+            "shoprite_categories": {
+                "food_cupboard": "/api/shoprite/food-cupboard",
+                "fresh_meat_poultry": "/api/shoprite/fresh-meat-poultry",
+                "frozen_meat_poultry": "/api/shoprite/frozen-meat-poultry",
+                "milk_butter_eggs": "/api/shoprite/milk-butter-eggs",
+                "cheese": "/api/shoprite/cheese",
+                "yoghurt": "/api/shoprite/yoghurt",
+                "fresh_fruit": "/api/shoprite/fresh-fruit",
+                "fresh_vegetables": "/api/shoprite/fresh-vegetables",
+                "fresh_salad_herbs_dip": "/api/shoprite/fresh-salad-herbs-dip",
+                "bakery": "/api/shoprite/bakery",
+                "frozen_food": "/api/shoprite/frozen-food",
+                "chocolates_sweets": "/api/shoprite/chocolates-sweets",
+                "ready_meals": "/api/shoprite/ready-meals"
+            },
+            "woolworths_categories": {
+                "meat_poultry_fish": "/api/woolworths/meat-poultry-fish",
+                "milk_dairy_eggs": "/api/woolworths/milk-dairy-eggs",
+                "fruit_vegetables_salads": "/api/woolworths/fruit-vegetables-salads",
+                "bakery": "/api/woolworths/bakery",
+                "frozen_food": "/api/woolworths/frozen-food",
+                "pantry": "/api/woolworths/pantry",
+                "chocolates_sweets_snacks": "/api/woolworths/chocolates-sweets-snacks",
+                "ready_meals": "/api/woolworths/ready-meals"
+            }
         },
         "documentation": {
             "swagger_ui": "/docs",
@@ -760,11 +787,7 @@ if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=int(os.getenv("PORT", 8000)))
 
-# Add these imports at the top
-import asyncio
-from scheduled_scraper import start_background_scraper, trigger_immediate_scrape, scrape_specific
-
-# Add these endpoints before the startup event
+# Additional endpoints
 @app.post("/api/trigger-scrape")
 async def trigger_scrape():
     """Manually trigger immediate scrape of all categories"""
@@ -843,6 +866,629 @@ async def clear_scraping_cache(
         cursor.close()
         conn.close()
 
+@app.get("/api/shoprite/all-products",
+         summary="Get Shoprite All Products",
+         description="Get all products from Shoprite with pagination support. Uses the 'All Departments/Food' category with page-based pagination.",
+         response_description="Returns products from the specified page with pagination info",
+         tags=["Shoprite"])
+async def get_shoprite_all_products(
+    page: int = Query(0, description="Page number (0-indexed, default: 0)", ge=0),
+    max_products: Optional[int] = Query(None, description="Maximum number of products to return (optional)")
+):
+    """
+    Get all products from Shoprite with pagination support.
+    
+    **Pagination:**
+    - Page 0: https://www.shoprite.co.za/c-2413/All-Departments/Food
+    - Page 1: https://www.shoprite.co.za/c-2413/All-Departments/Food?q=%3Arelevance%3AbrowseAllStoresFacetOff%3AbrowseAllStoresFacetOff&page=1
+    - Page 2: https://www.shoprite.co.za/c-2413/All-Departments/Food?q=%3Arelevance%3AbrowseAllStoresFacetOff%3AbrowseAllStoresFacetOff&page=2
+    - etc.
+    
+    **Parameters:**
+    - `page`: Page number (0-indexed, default: 0)
+    - `max_products`: Optional limit on number of products returned
+    
+    **Returns:**
+    - List of products from the specified page
+    - Pagination information
+    - Product count and details
+    """
+    try:
+        # Initialize Shoprite scraper
+        scraper = ShopriteScraper()
+        
+        # Build URL based on page number
+        if page == 0:
+            # First page doesn't need page parameter
+            url = "https://www.shoprite.co.za/c-2413/All-Departments/Food"
+        else:
+            # Subsequent pages need the page parameter
+            url = f"https://www.shoprite.co.za/c-2413/All-Departments/Food?q=%3Arelevance%3AbrowseAllStoresFacetOff%3AbrowseAllStoresFacetOff&page={page}"
+        
+        print(f"🔄 Scraping Shoprite all products - Page {page}")
+        print(f"URL: {url}")
+        
+        # Scrape products from the specific page
+        products = scraper.scrape_category(max_pages=1, max_products=max_products)
+        
+        if not products:
+            return {
+                "message": f"No products found on page {page}",
+                "page": page,
+                "products_count": 0,
+                "products": [],
+                "url": url
+            }
+        
+        # Store products in database (with category "all-products" for this endpoint)
+        print(f"📊 Storing {len(products)} products from page {page}...")
+        changes = store_products(products, "shoprite", "all-products", True)
+        
+        # Update cache
+        update_scraping_cache("shoprite", "all-products", products, len(changes))
+        
+        return {
+            "message": f"Successfully scraped {len(products)} products from page {page}",
+            "page": page,
+            "products_count": len(products),
+            "price_changes": len(changes),
+            "changes": changes[:10] if changes else [],
+            "products": products,
+            "url": url,
+            "pagination_info": {
+                "current_page": page,
+                "next_page": page + 1,
+                "products_per_page": len(products)
+            }
+        }
+        
+    except Exception as e:
+        print(f"❌ Shoprite all products scraping error: {e}")
+        raise HTTPException(status_code=500, detail=f"Shoprite all products scraping failed: {str(e)}")
+
+# Shoprite Category Endpoints
+@app.get("/api/shoprite/food-cupboard",
+         summary="Get Shoprite Food Cupboard Products",
+         description="Get products from Shoprite Food Cupboard category with pagination support",
+         response_description="Returns products from the Food Cupboard category",
+         tags=["Shoprite Categories"])
+async def get_shoprite_food_cupboard(
+    page: int = Query(0, description="Page number (0-indexed, default: 0)", ge=0),
+    max_products: Optional[int] = Query(None, description="Maximum number of products to return (optional)")
+):
+    """Get products from Shoprite Food Cupboard category"""
+    try:
+        scraper = ShopriteScraper()
+        
+        if page == 0:
+            url = "https://www.shoprite.co.za/c-2413/All-Departments/Food?q=%3Arelevance%3AallCategories%3Afood_cupboard%3AbrowseAllStoresFacetOff%3AbrowseAllStoresFacetOff&page=0"
+        else:
+            url = f"https://www.shoprite.co.za/c-2413/All-Departments/Food?q=%3Arelevance%3AallCategories%3Afood_cupboard%3AbrowseAllStoresFacetOff%3AbrowseAllStoresFacetOff&page={page}"
+        
+        print(f"🔄 Scraping Shoprite Food Cupboard - Page {page}")
+        products = scraper.scrape_category(max_pages=1, max_products=max_products)
+        
+        if not products:
+            return {"message": f"No Food Cupboard products found on page {page}", "page": page, "products_count": 0, "products": [], "category": "Food Cupboard"}
+        
+        # Store products with category
+        changes = store_products(products, "shoprite", "Food Cupboard", True)
+        update_scraping_cache("shoprite", "Food Cupboard", products, len(changes))
+        
+        return {
+            "message": f"Successfully scraped {len(products)} Food Cupboard products from page {page}",
+            "page": page,
+            "products_count": len(products),
+            "category": "Food Cupboard",
+            "price_changes": len(changes),
+            "products": products,
+            "url": url
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Food Cupboard scraping failed: {str(e)}")
+
+@app.get("/api/shoprite/fresh-meat-poultry",
+         summary="Get Shoprite Fresh Meat & Poultry Products",
+         description="Get products from Shoprite Fresh Meat & Poultry category",
+         tags=["Shoprite Categories"])
+async def get_shoprite_fresh_meat_poultry(
+    page: int = Query(0, description="Page number (0-indexed, default: 0)", ge=0),
+    max_products: Optional[int] = Query(None, description="Maximum number of products to return (optional)")
+):
+    """Get products from Shoprite Fresh Meat & Poultry category"""
+    try:
+        scraper = ShopriteScraper()
+        
+        if page == 0:
+            url = "https://www.shoprite.co.za/c-2413/All-Departments/Food?q=%3Arelevance%3AallCategories%3Afresh_meat_and_poultry%3AbrowseAllStoresFacetOff%3AbrowseAllStoresFacetOff&page=0"
+        else:
+            url = f"https://www.shoprite.co.za/c-2413/All-Departments/Food?q=%3Arelevance%3AallCategories%3Afresh_meat_and_poultry%3AbrowseAllStoresFacetOff%3AbrowseAllStoresFacetOff&page={page}"
+        
+        products = scraper.scrape_category(max_pages=1, max_products=max_products)
+        
+        if not products:
+            return {"message": f"No Fresh Meat & Poultry products found on page {page}", "page": page, "products_count": 0, "products": [], "category": "Fresh Meat & Poultry"}
+        
+        changes = store_products(products, "shoprite", "Fresh Meat & Poultry", True)
+        update_scraping_cache("shoprite", "Fresh Meat & Poultry", products, len(changes))
+        
+        return {
+            "message": f"Successfully scraped {len(products)} Fresh Meat & Poultry products from page {page}",
+            "page": page,
+            "products_count": len(products),
+            "category": "Fresh Meat & Poultry",
+            "price_changes": len(changes),
+            "products": products
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Fresh Meat & Poultry scraping failed: {str(e)}")
+
+@app.get("/api/shoprite/frozen-meat-poultry",
+         summary="Get Shoprite Frozen Meat & Poultry Products",
+         description="Get products from Shoprite Frozen Meat & Poultry category",
+         tags=["Shoprite Categories"])
+async def get_shoprite_frozen_meat_poultry(
+    page: int = Query(0, description="Page number (0-indexed, default: 0)", ge=0),
+    max_products: Optional[int] = Query(None, description="Maximum number of products to return (optional)")
+):
+    """Get products from Shoprite Frozen Meat & Poultry category"""
+    try:
+        scraper = ShopriteScraper()
+        
+        if page == 0:
+            url = "https://www.shoprite.co.za/c-2413/All-Departments/Food?q=%3Arelevance%3AallCategories%3Afrozen_meat_and_poultry%3AbrowseAllStoresFacetOff%3AbrowseAllStoresFacetOff&page=0"
+        else:
+            url = f"https://www.shoprite.co.za/c-2413/All-Departments/Food?q=%3Arelevance%3AallCategories%3Afrozen_meat_and_poultry%3AbrowseAllStoresFacetOff%3AbrowseAllStoresFacetOff&page={page}"
+        
+        products = scraper.scrape_category(max_pages=1, max_products=max_products)
+        
+        if not products:
+            return {"message": f"No Frozen Meat & Poultry products found on page {page}", "page": page, "products_count": 0, "products": [], "category": "Frozen Meat & Poultry"}
+        
+        changes = store_products(products, "shoprite", "Frozen Meat & Poultry", True)
+        update_scraping_cache("shoprite", "Frozen Meat & Poultry", products, len(changes))
+        
+        return {
+            "message": f"Successfully scraped {len(products)} Frozen Meat & Poultry products from page {page}",
+            "page": page,
+            "products_count": len(products),
+            "category": "Frozen Meat & Poultry",
+            "price_changes": len(changes),
+            "products": products
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Frozen Meat & Poultry scraping failed: {str(e)}")
+
+@app.get("/api/shoprite/milk-butter-eggs",
+         summary="Get Shoprite Milk, Butter & Eggs Products",
+         description="Get products from Shoprite Milk, Butter & Eggs category",
+         tags=["Shoprite Categories"])
+async def get_shoprite_milk_butter_eggs(
+    page: int = Query(0, description="Page number (0-indexed, default: 0)", ge=0),
+    max_products: Optional[int] = Query(None, description="Maximum number of products to return (optional)")
+):
+    """Get products from Shoprite Milk, Butter & Eggs category"""
+    try:
+        scraper = ShopriteScraper()
+        
+        if page == 0:
+            url = "https://www.shoprite.co.za/c-2413/All-Departments/Food?q=%3Arelevance%3AallCategories%3Amilk_butter_and_eggs%3AbrowseAllStoresFacetOff%3AbrowseAllStoresFacetOff&page=0"
+        else:
+            url = f"https://www.shoprite.co.za/c-2413/All-Departments/Food?q=%3Arelevance%3AallCategories%3Amilk_butter_and_eggs%3AbrowseAllStoresFacetOff%3AbrowseAllStoresFacetOff&page={page}"
+        
+        products = scraper.scrape_category(max_pages=1, max_products=max_products)
+        
+        if not products:
+            return {"message": f"No Milk, Butter & Eggs products found on page {page}", "page": page, "products_count": 0, "products": [], "category": "Milk, Butter & Eggs"}
+        
+        changes = store_products(products, "shoprite", "Milk, Butter & Eggs", True)
+        update_scraping_cache("shoprite", "Milk, Butter & Eggs", products, len(changes))
+        
+        return {
+            "message": f"Successfully scraped {len(products)} Milk, Butter & Eggs products from page {page}",
+            "page": page,
+            "products_count": len(products),
+            "category": "Milk, Butter & Eggs",
+            "price_changes": len(changes),
+            "products": products
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Milk, Butter & Eggs scraping failed: {str(e)}")
+
+@app.get("/api/shoprite/cheese",
+         summary="Get Shoprite Cheese Products",
+         description="Get products from Shoprite Cheese category",
+         tags=["Shoprite Categories"])
+async def get_shoprite_cheese(
+    page: int = Query(0, description="Page number (0-indexed, default: 0)", ge=0),
+    max_products: Optional[int] = Query(None, description="Maximum number of products to return (optional)")
+):
+    """Get products from Shoprite Cheese category"""
+    try:
+        scraper = ShopriteScraper()
+        
+        if page == 0:
+            url = "https://www.shoprite.co.za/c-2413/All-Departments/Food?q=%3Arelevance%3AallCategories%3Acheese%3AbrowseAllStoresFacetOff%3AbrowseAllStoresFacetOff&page=0"
+        else:
+            url = f"https://www.shoprite.co.za/c-2413/All-Departments/Food?q=%3Arelevance%3AallCategories%3Acheese%3AbrowseAllStoresFacetOff%3AbrowseAllStoresFacetOff&page={page}"
+        
+        products = scraper.scrape_category(max_pages=1, max_products=max_products)
+        
+        if not products:
+            return {"message": f"No Cheese products found on page {page}", "page": page, "products_count": 0, "products": [], "category": "Cheese"}
+        
+        changes = store_products(products, "shoprite", "Cheese", True)
+        update_scraping_cache("shoprite", "Cheese", products, len(changes))
+        
+        return {
+            "message": f"Successfully scraped {len(products)} Cheese products from page {page}",
+            "page": page,
+            "products_count": len(products),
+            "category": "Cheese",
+            "price_changes": len(changes),
+            "products": products
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Cheese scraping failed: {str(e)}")
+
+@app.get("/api/shoprite/yoghurt",
+         summary="Get Shoprite Yoghurt Products",
+         description="Get products from Shoprite Yoghurt category",
+         tags=["Shoprite Categories"])
+async def get_shoprite_yoghurt(
+    page: int = Query(0, description="Page number (0-indexed, default: 0)", ge=0),
+    max_products: Optional[int] = Query(None, description="Maximum number of products to return (optional)")
+):
+    """Get products from Shoprite Yoghurt category"""
+    try:
+        scraper = ShopriteScraper()
+        
+        if page == 0:
+            url = "https://www.shoprite.co.za/c-2413/All-Departments/Food?q=%3Arelevance%3AallCategories%3Ayoghurt%3AbrowseAllStoresFacetOff%3AbrowseAllStoresFacetOff&page=0"
+        else:
+            url = f"https://www.shoprite.co.za/c-2413/All-Departments/Food?q=%3Arelevance%3AallCategories%3Ayoghurt%3AbrowseAllStoresFacetOff%3AbrowseAllStoresFacetOff&page={page}"
+        
+        products = scraper.scrape_category(max_pages=1, max_products=max_products)
+        
+        if not products:
+            return {"message": f"No Yoghurt products found on page {page}", "page": page, "products_count": 0, "products": [], "category": "Yoghurt"}
+        
+        changes = store_products(products, "shoprite", "Yoghurt", True)
+        update_scraping_cache("shoprite", "Yoghurt", products, len(changes))
+        
+        return {
+            "message": f"Successfully scraped {len(products)} Yoghurt products from page {page}",
+            "page": page,
+            "products_count": len(products),
+            "category": "Yoghurt",
+            "price_changes": len(changes),
+            "products": products
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Yoghurt scraping failed: {str(e)}")
+
+@app.get("/api/shoprite/fresh-fruit",
+         summary="Get Shoprite Fresh Fruit Products",
+         description="Get products from Shoprite Fresh Fruit category",
+         tags=["Shoprite Categories"])
+async def get_shoprite_fresh_fruit(
+    page: int = Query(0, description="Page number (0-indexed, default: 0)", ge=0),
+    max_products: Optional[int] = Query(None, description="Maximum number of products to return (optional)")
+):
+    """Get products from Shoprite Fresh Fruit category"""
+    try:
+        scraper = ShopriteScraper()
+        
+        if page == 0:
+            url = "https://www.shoprite.co.za/c-2413/All-Departments/Food?q=%3Arelevance%3AallCategories%3Afresh_fruit%3AbrowseAllStoresFacetOff%3AbrowseAllStoresFacetOff&page=0"
+        else:
+            url = f"https://www.shoprite.co.za/c-2413/All-Departments/Food?q=%3Arelevance%3AallCategories%3Afresh_fruit%3AbrowseAllStoresFacetOff%3AbrowseAllStoresFacetOff&page={page}"
+        
+        products = scraper.scrape_category(max_pages=1, max_products=max_products)
+        
+        if not products:
+            return {"message": f"No Fresh Fruit products found on page {page}", "page": page, "products_count": 0, "products": [], "category": "Fresh Fruit"}
+        
+        changes = store_products(products, "shoprite", "Fresh Fruit", True)
+        update_scraping_cache("shoprite", "Fresh Fruit", products, len(changes))
+        
+        return {
+            "message": f"Successfully scraped {len(products)} Fresh Fruit products from page {page}",
+            "page": page,
+            "products_count": len(products),
+            "category": "Fresh Fruit",
+            "price_changes": len(changes),
+            "products": products
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Fresh Fruit scraping failed: {str(e)}")
+
+@app.get("/api/shoprite/fresh-vegetables",
+         summary="Get Shoprite Fresh Vegetables Products",
+         description="Get products from Shoprite Fresh Vegetables category",
+         tags=["Shoprite Categories"])
+async def get_shoprite_fresh_vegetables(
+    page: int = Query(0, description="Page number (0-indexed, default: 0)", ge=0),
+    max_products: Optional[int] = Query(None, description="Maximum number of products to return (optional)")
+):
+    """Get products from Shoprite Fresh Vegetables category"""
+    try:
+        scraper = ShopriteScraper()
+        
+        if page == 0:
+            url = "https://www.shoprite.co.za/c-2413/All-Departments/Food?q=%3Arelevance%3AallCategories%3Afresh_vegetables%3AbrowseAllStoresFacetOff%3AbrowseAllStoresFacetOff&page=0"
+        else:
+            url = f"https://www.shoprite.co.za/c-2413/All-Departments/Food?q=%3Arelevance%3AallCategories%3Afresh_vegetables%3AbrowseAllStoresFacetOff%3AbrowseAllStoresFacetOff&page={page}"
+        
+        products = scraper.scrape_category(max_pages=1, max_products=max_products)
+        
+        if not products:
+            return {"message": f"No Fresh Vegetables products found on page {page}", "page": page, "products_count": 0, "products": [], "category": "Fresh Vegetables"}
+        
+        changes = store_products(products, "shoprite", "Fresh Vegetables", True)
+        update_scraping_cache("shoprite", "Fresh Vegetables", products, len(changes))
+        
+        return {
+            "message": f"Successfully scraped {len(products)} Fresh Vegetables products from page {page}",
+            "page": page,
+            "products_count": len(products),
+            "category": "Fresh Vegetables",
+            "price_changes": len(changes),
+            "products": products
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Fresh Vegetables scraping failed: {str(e)}")
+
+@app.get("/api/shoprite/fresh-salad-herbs-dip",
+         summary="Get Shoprite Fresh Salad, Herbs & Dip Products",
+         description="Get products from Shoprite Fresh Salad, Herbs & Dip category",
+         tags=["Shoprite Categories"])
+async def get_shoprite_fresh_salad_herbs_dip(
+    page: int = Query(0, description="Page number (0-indexed, default: 0)", ge=0),
+    max_products: Optional[int] = Query(None, description="Maximum number of products to return (optional)")
+):
+    """Get products from Shoprite Fresh Salad, Herbs & Dip category"""
+    try:
+        scraper = ShopriteScraper()
+        
+        if page == 0:
+            url = "https://www.shoprite.co.za/c-2413/All-Departments/Food?q=%3Arelevance%3AallCategories%3Afresh_salad_herbs_and_dip%3AbrowseAllStoresFacetOff%3AbrowseAllStoresFacetOff&page=0"
+        else:
+            url = f"https://www.shoprite.co.za/c-2413/All-Departments/Food?q=%3Arelevance%3AallCategories%3Afresh_salad_herbs_and_dip%3AbrowseAllStoresFacetOff%3AbrowseAllStoresFacetOff&page={page}"
+        
+        products = scraper.scrape_category(max_pages=1, max_products=max_products)
+        
+        if not products:
+            return {"message": f"No Fresh Salad, Herbs & Dip products found on page {page}", "page": page, "products_count": 0, "products": [], "category": "Fresh Salad, Herbs & Dip"}
+        
+        changes = store_products(products, "shoprite", "Fresh Salad, Herbs & Dip", True)
+        update_scraping_cache("shoprite", "Fresh Salad, Herbs & Dip", products, len(changes))
+        
+        return {
+            "message": f"Successfully scraped {len(products)} Fresh Salad, Herbs & Dip products from page {page}",
+            "page": page,
+            "products_count": len(products),
+            "category": "Fresh Salad, Herbs & Dip",
+            "price_changes": len(changes),
+            "products": products
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Fresh Salad, Herbs & Dip scraping failed: {str(e)}")
+
+@app.get("/api/shoprite/bakery",
+         summary="Get Shoprite Bakery Products",
+         description="Get products from Shoprite Bakery category",
+         tags=["Shoprite Categories"])
+async def get_shoprite_bakery(
+    page: int = Query(0, description="Page number (0-indexed, default: 0)", ge=0),
+    max_products: Optional[int] = Query(None, description="Maximum number of products to return (optional)")
+):
+    """Get products from Shoprite Bakery category"""
+    try:
+        scraper = ShopriteScraper()
+        
+        if page == 0:
+            url = "https://www.shoprite.co.za/c-2413/All-Departments/Food?q=%3Arelevance%3AallCategories%3Abakery%3AbrowseAllStoresFacetOff%3AbrowseAllStoresFacetOff&page=0"
+        else:
+            url = f"https://www.shoprite.co.za/c-2413/All-Departments/Food?q=%3Arelevance%3AallCategories%3Abakery%3AbrowseAllStoresFacetOff%3AbrowseAllStoresFacetOff&page={page}"
+        
+        products = scraper.scrape_category(max_pages=1, max_products=max_products)
+        
+        if not products:
+            return {"message": f"No Bakery products found on page {page}", "page": page, "products_count": 0, "products": [], "category": "Bakery"}
+        
+        changes = store_products(products, "shoprite", "Bakery", True)
+        update_scraping_cache("shoprite", "Bakery", products, len(changes))
+        
+        return {
+            "message": f"Successfully scraped {len(products)} Bakery products from page {page}",
+            "page": page,
+            "products_count": len(products),
+            "category": "Bakery",
+            "price_changes": len(changes),
+            "products": products
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Bakery scraping failed: {str(e)}")
+
+@app.get("/api/shoprite/frozen-food",
+         summary="Get Shoprite Frozen Food Products",
+         description="Get products from Shoprite Frozen Food category",
+         tags=["Shoprite Categories"])
+async def get_shoprite_frozen_food(
+    page: int = Query(0, description="Page number (0-indexed, default: 0)", ge=0),
+    max_products: Optional[int] = Query(None, description="Maximum number of products to return (optional)")
+):
+    """Get products from Shoprite Frozen Food category"""
+    try:
+        scraper = ShopriteScraper()
+        
+        if page == 0:
+            url = "https://www.shoprite.co.za/c-2413/All-Departments/Food?q=%3Arelevance%3AallCategories%3Afrozen_food%3AbrowseAllStoresFacetOff%3AbrowseAllStoresFacetOff&page=0"
+        else:
+            url = f"https://www.shoprite.co.za/c-2413/All-Departments/Food?q=%3Arelevance%3AallCategories%3Afrozen_food%3AbrowseAllStoresFacetOff%3AbrowseAllStoresFacetOff&page={page}"
+        
+        products = scraper.scrape_category(max_pages=1, max_products=max_products)
+        
+        if not products:
+            return {"message": f"No Frozen Food products found on page {page}", "page": page, "products_count": 0, "products": [], "category": "Frozen Food"}
+        
+        changes = store_products(products, "shoprite", "Frozen Food", True)
+        update_scraping_cache("shoprite", "Frozen Food", products, len(changes))
+        
+        return {
+            "message": f"Successfully scraped {len(products)} Frozen Food products from page {page}",
+            "page": page,
+            "products_count": len(products),
+            "category": "Frozen Food",
+            "price_changes": len(changes),
+            "products": products
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Frozen Food scraping failed: {str(e)}")
+
+@app.get("/api/shoprite/chocolates-sweets",
+         summary="Get Shoprite Chocolates & Sweets Products",
+         description="Get products from Shoprite Chocolates & Sweets category",
+         tags=["Shoprite Categories"])
+async def get_shoprite_chocolates_sweets(
+    page: int = Query(0, description="Page number (0-indexed, default: 0)", ge=0),
+    max_products: Optional[int] = Query(None, description="Maximum number of products to return (optional)")
+):
+    """Get products from Shoprite Chocolates & Sweets category"""
+    try:
+        scraper = ShopriteScraper()
+        
+        if page == 0:
+            url = "https://www.shoprite.co.za/c-2413/All-Departments/Food?q=%3Arelevance%3AallCategories%3Achocolates_and_sweets%3AbrowseAllStoresFacetOff%3AbrowseAllStoresFacetOff&page=0"
+        else:
+            url = f"https://www.shoprite.co.za/c-2413/All-Departments/Food?q=%3Arelevance%3AallCategories%3Achocolates_and_sweets%3AbrowseAllStoresFacetOff%3AbrowseAllStoresFacetOff&page={page}"
+        
+        products = scraper.scrape_category(max_pages=1, max_products=max_products)
+        
+        if not products:
+            return {"message": f"No Chocolates & Sweets products found on page {page}", "page": page, "products_count": 0, "products": [], "category": "Chocolates & Sweets"}
+        
+        changes = store_products(products, "shoprite", "Chocolates & Sweets", True)
+        update_scraping_cache("shoprite", "Chocolates & Sweets", products, len(changes))
+        
+        return {
+            "message": f"Successfully scraped {len(products)} Chocolates & Sweets products from page {page}",
+            "page": page,
+            "products_count": len(products),
+            "category": "Chocolates & Sweets",
+            "price_changes": len(changes),
+            "products": products
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Chocolates & Sweets scraping failed: {str(e)}")
+
+@app.get("/api/shoprite/ready-meals",
+         summary="Get Shoprite Ready Meals Products",
+         description="Get products from Shoprite Ready Meals category",
+         tags=["Shoprite Categories"])
+async def get_shoprite_ready_meals(
+    page: int = Query(0, description="Page number (0-indexed, default: 0)", ge=0),
+    max_products: Optional[int] = Query(None, description="Maximum number of products to return (optional)")
+):
+    """Get products from Shoprite Ready Meals category"""
+    try:
+        scraper = ShopriteScraper()
+        
+        if page == 0:
+            url = "https://www.shoprite.co.za/c-2413/All-Departments/Food?q=%3Arelevance%3AallCategories%3Aready_meals%3AbrowseAllStoresFacetOff%3AbrowseAllStoresFacetOff&page=0"
+        else:
+            url = f"https://www.shoprite.co.za/c-2413/All-Departments/Food?q=%3Arelevance%3AallCategories%3Aready_meals%3AbrowseAllStoresFacetOff%3AbrowseAllStoresFacetOff&page={page}"
+        
+        products = scraper.scrape_category(max_pages=1, max_products=max_products)
+        
+        if not products:
+            return {"message": f"No Ready Meals products found on page {page}", "page": page, "products_count": 0, "products": [], "category": "Ready Meals"}
+        
+        changes = store_products(products, "shoprite", "Ready Meals", True)
+        update_scraping_cache("shoprite", "Ready Meals", products, len(changes))
+        
+        return {
+            "message": f"Successfully scraped {len(products)} Ready Meals products from page {page}",
+            "page": page,
+            "products_count": len(products),
+            "category": "Ready Meals",
+            "price_changes": len(changes),
+            "products": products
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Ready Meals scraping failed: {str(e)}")
+
+
+
+
+
+# Woolworths Category Endpoints
+@app.get("/api/woolworths/meat-poultry-fish",
+         summary="Get Woolworths Meat, Poultry & Fish Products",
+         description="Get products from Woolworths Meat, Poultry & Fish category with pagination support",
+         response_description="Returns products from the Meat, Poultry & Fish category",
+         tags=["Woolworths Categories"])
+async def get_woolworths_meat_poultry_fish(
+    page: int = Query(0, description="Page number (0-indexed, default: 0)", ge=0),
+    max_products: Optional[int] = Query(None, description="Maximum number of products to return (optional)")
+):
+    """Get products from Woolworths Meat, Poultry & Fish category"""
+    try:
+        scraper = WoolworthsScraper(category='meat-poultry')
+        
+        print(f"🔄 Scraping Woolworths Meat, Poultry & Fish - Page {page}")
+        products = scraper.scrape_category(max_pages=1, max_products=max_products)
+        
+        if not products:
+            return {"message": f"No Meat, Poultry & Fish products found on page {page}", "page": page, "products_count": 0, "products": [], "category": "Meat, Poultry & Fish"}
+        
+        changes = store_products(products, "woolworths", "Meat, Poultry & Fish", True)
+        update_scraping_cache("woolworths", "Meat, Poultry & Fish", products, len(changes))
+        
+        return {
+            "message": f"Successfully scraped {len(products)} Meat, Poultry & Fish products from page {page}",
+            "page": page,
+            "products_count": len(products),
+            "category": "Meat, Poultry & Fish",
+            "price_changes": len(changes),
+            "products": products
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Meat, Poultry & Fish scraping failed: {str(e)}")
+
+@app.get("/api/woolworths/fruit-vegetables-salads",
+         summary="Get Woolworths Fruit, Vegetables & Salads Products",
+         description="Get products from Woolworths Fruit, Vegetables & Salads category",
+         tags=["Woolworths Categories"])
+async def get_woolworths_fruit_vegetables_salads(
+    page: int = Query(0, description="Page number (0-indexed, default: 0)", ge=0),
+    max_products: Optional[int] = Query(None, description="Maximum number of products to return (optional)")
+):
+    """Get products from Woolworths Fruit, Vegetables & Salads category"""
+    try:
+        scraper = WoolworthsScraper(category='fruit-vegetables')
+        
+        print(f"🔄 Scraping Woolworths Fruit, Vegetables & Salads - Page {page}")
+        products = scraper.scrape_category(max_pages=1, max_products=max_products)
+        
+        if not products:
+            return {"message": f"No Fruit, Vegetables & Salads products found on page {page}", "page": page, "products_count": 0, "products": [], "category": "Fruit, Vegetables & Salads"}
+        
+        changes = store_products(products, "woolworths", "Fruit, Vegetables & Salads", True)
+        update_scraping_cache("woolworths", "Fruit, Vegetables & Salads", products, len(changes))
+        
+        return {
+            "message": f"Successfully scraped {len(products)} Fruit, Vegetables & Salads products from page {page}",
+            "page": page,
+            "products_count": len(products),
+            "category": "Fruit, Vegetables & Salads",
+            "price_changes": len(changes),
+            "products": products
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Fruit, Vegetables & Salads scraping failed: {str(e)}")
+
 @app.post("/api/force-scrape")
 async def force_scrape(
     store: str,
@@ -913,18 +1559,4 @@ async def force_scrape(
         print(f"❌ Force scraping error: {e}")
         raise HTTPException(status_code=500, detail=f"Force scraping failed: {str(e)}")
 
-# Update the startup event
-@app.on_event("startup")
-async def startup_event():
-    """Initialize database and start background scraper"""
-    print("Initializing database...")
-    if init_database():
-        print("✅ Database initialized successfully")
-    else:
-        print("❌ Database initialization failed")
-    
-    print("Starting background scraper...")
-    # Start background scraper in a separate task
-    asyncio.create_task(start_background_scraper())
-    print("✅ Background scraper started")
 

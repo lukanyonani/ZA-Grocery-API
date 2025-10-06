@@ -12,24 +12,46 @@ from datetime import datetime
 from typing import List, Dict
 import time
 import re
+from selenium import webdriver
+from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.common.exceptions import TimeoutException, NoSuchElementException
 
 
 class PnPScraper:
-    """Scraper for Pick n Pay promotional products"""
+    """Scraper for Pick n Pay promotional products using Selenium"""
     
     def __init__(self):
         self.base_url = "https://www.pnp.co.za"
         self.promotions_url = "https://www.pnp.co.za/c/pnpbase?query=:relevance:allCategories:pnpbase:isOnPromotion:On%20Promotion"
-        self.headers = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-            'Accept-Language': 'en-US,en;q=0.5',
-            'Accept-Encoding': 'gzip, deflate, br',
-            'Connection': 'keep-alive',
-            'Upgrade-Insecure-Requests': '1'
-        }
-        self.session = requests.Session()
         self.products = []
+        self.driver = None
+        
+    def setup_driver(self):
+        """Setup Chrome driver with options"""
+        chrome_options = Options()
+        chrome_options.add_argument('--headless')  # Run in background
+        chrome_options.add_argument('--no-sandbox')
+        chrome_options.add_argument('--disable-dev-shm-usage')
+        chrome_options.add_argument('--disable-gpu')
+        chrome_options.add_argument('--window-size=1920,1080')
+        chrome_options.add_argument('--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36')
+        
+        try:
+            self.driver = webdriver.Chrome(options=chrome_options)
+            return True
+        except Exception as e:
+            print(f"❌ Failed to setup Chrome driver: {e}")
+            print("💡 Make sure Chrome and ChromeDriver are installed")
+            return False
+    
+    def close_driver(self):
+        """Close the Chrome driver"""
+        if self.driver:
+            self.driver.quit()
+            self.driver = None
     
     def fetch_page(self, url: str, page: int = 1) -> str:
         """Fetch HTML content from URL"""
@@ -79,19 +101,58 @@ class PnPScraper:
         soup = BeautifulSoup(html, 'html.parser')
         products = []
         
-        # Try multiple selector strategies
-        # Strategy 1: Look for product cards/tiles
-        product_containers = soup.find_all(['div', 'article'], class_=re.compile(r'product|item|card|tile', re.I))
+        # Try multiple selector strategies for modern e-commerce sites
+        selectors_to_try = [
+            # Modern e-commerce selectors
+            '[data-testid*="product"]',
+            '[data-testid*="item"]',
+            '[data-testid*="card"]',
+            '.product-card',
+            '.product-item',
+            '.product-tile',
+            '.product-grid-item',
+            '.catalog-item',
+            '.search-result-item',
+            # Generic selectors
+            '[class*="product"]',
+            '[class*="item"]',
+            '[class*="card"]',
+            '[class*="tile"]',
+            # Data attribute selectors
+            '[data-product-id]',
+            '[data-item-id]',
+            '[data-sku]',
+            # Link selectors
+            'a[href*="/p/"]',
+            'a[href*="/product/"]',
+            'a[href*="/item/"]',
+        ]
+        
+        product_containers = []
+        
+        for selector in selectors_to_try:
+            containers = soup.select(selector)
+            if containers:
+                product_containers = containers
+                print(f"Found {len(containers)} containers using selector: {selector}")
+                break
         
         if not product_containers:
-            # Strategy 2: Look for common e-commerce patterns
-            product_containers = soup.find_all('div', {'data-product-id': True})
+            print("⚠️  No product containers found with any selector")
+            # Try to find any elements that might contain product info
+            all_elements = soup.find_all(['div', 'article', 'section'])
+            print(f"Total elements found: {len(all_elements)}")
+            
+            # Look for elements with product-related text
+            for element in all_elements:
+                text = element.get_text().lower()
+                if any(word in text for word in ['price', 'rand', 'r ', 'product', 'item']):
+                    if len(text) > 10 and len(text) < 500:  # Reasonable length
+                        product_containers.append(element)
+            
+            print(f"Found {len(product_containers)} elements with product-related text")
         
-        if not product_containers:
-            # Strategy 3: Look for links containing product info
-            product_containers = soup.find_all('a', href=re.compile(r'/p/'))
-        
-        print(f"Found {len(product_containers)} potential product containers")
+        print(f"Processing {len(product_containers)} potential product containers")
         
         for idx, container in enumerate(product_containers):
             try:
@@ -121,23 +182,76 @@ class PnPScraper:
             'scraped_at': datetime.now().isoformat()
         }
         
-        # Extract product name
-        name_elem = (
-            container.find(['h1', 'h2', 'h3', 'h4'], class_=re.compile(r'title|name|product', re.I)) or
-            container.find('a', class_=re.compile(r'title|name', re.I)) or
-            container.find(class_=re.compile(r'product.*name|title', re.I))
-        )
-        if name_elem:
-            product['name'] = name_elem.get_text(strip=True)
+        # Extract product name - try multiple approaches
+        name_selectors = [
+            'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
+            '.product-name', '.product-title', '.item-name', '.product-title',
+            '[data-testid*="name"]', '[data-testid*="title"]',
+            'a[title]', 'span[title]', '.title', '.name',
+            # PnP specific selectors
+            '.product-grid-item-title',
+            '.catalog-item-title',
+            '.search-result-title'
+        ]
+        
+        for selector in name_selectors:
+            name_elem = container.select_one(selector)
+            if name_elem:
+                name_text = name_elem.get_text().strip()
+                if name_text and len(name_text) > 3:  # Valid name
+                    product['name'] = name_text
+                    break
+        
+        # If no name found, try getting text from the container itself
+        if not product['name']:
+            text = container.get_text().strip()
+            lines = [line.strip() for line in text.split('\n') if line.strip()]
+            for line in lines:
+                if 5 < len(line) < 100 and not line.isdigit() and 'R' not in line:
+                    product['name'] = line
+                    break
         
         # Extract brand
         brand_elem = container.find(class_=re.compile(r'brand', re.I))
         if brand_elem:
             product['brand'] = brand_elem.get_text(strip=True)
         
-        # Extract prices
+        # Extract prices - look for price patterns in text
+        text = container.get_text()
+        
+        # Look for price patterns
+        price_patterns = [
+            r'R\s*(\d+(?:\.\d{2})?)',  # R 19.99
+            r'(\d+(?:\.\d{2})?)\s*R',  # 19.99 R
+            r'R\s*(\d+(?:,\d{3})*(?:\.\d{2})?)',  # R 1,234.56
+        ]
+        
+        prices = []
+        for pattern in price_patterns:
+            matches = re.findall(pattern, text)
+            for match in matches:
+                try:
+                    price = float(match.replace(',', ''))
+                    if price > 0:
+                        prices.append(price)
+                except ValueError:
+                    continue
+        
+        if prices:
+            # Sort prices to get the structure
+            prices.sort()
+            if len(prices) == 1:
+                product['promotional_price'] = prices[0]
+            elif len(prices) == 2:
+                product['original_price'] = prices[1]
+                product['promotional_price'] = prices[0]
+                if prices[1] > prices[0]:
+                    discount = ((prices[1] - prices[0]) / prices[1]) * 100
+                    product['discount'] = f"{discount:.1f}%"
+        
+        # Also try the old method as fallback
         price_container = container.find(class_=re.compile(r'price', re.I))
-        if price_container:
+        if price_container and not prices:
             price_text = price_container.get_text()
             price_data = self.parse_price(price_text)
             product['original_price'] = price_data['original']
@@ -183,12 +297,59 @@ class PnPScraper:
         return product
     
     def scrape(self, max_pages: int = 1) -> List[Dict]:
-        """Main scraping method"""
+        """Main scraping method using Selenium"""
         print("=" * 80)
-        print("Pick n Pay Promotions Scraper")
+        print("Pick n Pay Promotions Scraper (Selenium)")
         print("=" * 80)
         print(f"\nTarget URL: {self.promotions_url}")
         print(f"Max pages to scrape: {max_pages}\n")
+        
+        # Setup Chrome driver
+        if not self.setup_driver():
+            print("❌ Failed to setup Chrome driver. Falling back to requests method.")
+            return self.scrape_with_requests(max_pages)
+        
+        try:
+            all_products = []
+            
+            for page in range(1, max_pages + 1):
+                print(f"🔄 Scraping page {page}...")
+                
+                # Navigate to the page
+                self.driver.get(self.promotions_url)
+                
+                # Wait for page to load
+                try:
+                    # Wait for any product elements to appear
+                    WebDriverWait(self.driver, 10).until(
+                        EC.presence_of_element_located((By.CSS_SELECTOR, "[data-testid*='product'], .product, [class*='product'], [class*='item']"))
+                    )
+                except TimeoutException:
+                    print(f"⚠️  No product elements found on page {page}")
+                    continue
+                
+                # Get the page source after JavaScript execution
+                html = self.driver.page_source
+                
+                # Parse products from the rendered HTML
+                products = self.parse_products(html)
+                print(f"✓ Extracted {len(products)} products from page {page}")
+                
+                all_products.extend(products)
+                
+                # Be respectful - add delay between requests
+                if page < max_pages:
+                    time.sleep(3)
+            
+            self.products = all_products
+            return all_products
+            
+        finally:
+            self.close_driver()
+    
+    def scrape_with_requests(self, max_pages: int = 1) -> List[Dict]:
+        """Fallback scraping method using requests"""
+        print("🔄 Using fallback requests method...")
         
         all_products = []
         

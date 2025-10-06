@@ -107,24 +107,31 @@ WOOLWORTHS_CATEGORIES = {
 class WoolworthsScraper:
     """Woolworths scraper with category and pagination support"""
     
-    def __init__(self, category: str = 'fruit-vegetables'):
+    def __init__(self, category: str = None):
         """Initialize scraper
         
         Args:
-            category: Category to scrape (see WOOLWORTHS_CATEGORIES dict)
+            category: Category to scrape (see WOOLWORTHS_CATEGORIES dict). If None, scrapes from main page
         """
         self.base_url = "https://www.woolworths.co.za"
         
-        # Validate and set category
-        if category not in WOOLWORTHS_CATEGORIES:
-            available = ', '.join(WOOLWORTHS_CATEGORIES.keys())
-            raise ValueError(f"Invalid category '{category}'. Available: {available}")
-        
-        self.category = category
-        self.category_info = WOOLWORTHS_CATEGORIES[category]
-        self.category_name = self.category_info['name']
-        self.base_category_url = self.category_info['url']
-        self.paginated_category_url = self.category_info['paginated']
+        if category is None:
+            # No specific category - use main page
+            self.category = 'general'
+            self.category_name = 'General Products'
+            self.base_category_url = "https://www.woolworths.co.za"
+            self.paginated_category_url = "https://www.woolworths.co.za"
+        else:
+            # Validate and set category
+            if category not in WOOLWORTHS_CATEGORIES:
+                available = ', '.join(WOOLWORTHS_CATEGORIES.keys())
+                raise ValueError(f"Invalid category '{category}'. Available: {available}")
+            
+            self.category = category
+            self.category_info = WOOLWORTHS_CATEGORIES[category]
+            self.category_name = self.category_info['name']
+            self.base_category_url = self.category_info['url']
+            self.paginated_category_url = self.category_info['paginated']
         
         self.products = []
         
