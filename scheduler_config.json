@@ -1,0 +1,58 @@
+{
+  "scraping_schedule": {
+    "woolworths": [
+      {
+        "category": "fruit-vegetables",
+        "max_pages": 3,
+        "frequency_hours": 1,
+        "description": "Fruit & Vegetables - Every hour"
+      },
+      {
+        "category": "meat-poultry", 
+        "max_pages": 2,
+        "frequency_hours": 2,
+        "description": "Meat & Poultry - Every 2 hours"
+      },
+      {
+        "category": "dairy-eggs",
+        "max_pages": 2, 
+        "frequency_hours": 2,
+        "description": "Dairy & Eggs - Every 2 hours"
+      }
+    ],
+    "shoprite": [
+      {
+        "category": "food",
+        "max_pages": 2,
+        "frequency_hours": 1,
+        "description": "Food - Every hour"
+      },
+      {
+        "category": "beverages",
+        "max_pages": 2,
+        "frequency_hours": 3,
+        "description": "Beverages - Every 3 hours"
+      }
+    ],
+    "pnp": [
+      {
+        "category": "snacks",
+        "max_pages": 2,
+        "frequency_hours": 1,
+        "description": "Snacks - Every hour"
+      },
+      {
+        "category": "beverages", 
+        "max_pages": 2,
+        "frequency_hours": 2,
+        "description": "Beverages - Every 2 hours"
+      }
+    ]
+  },
+  "settings": {
+    "delay_between_scrapes_seconds": 30,
+    "cycle_interval_hours": 1,
+    "error_retry_delay_minutes": 5,
+    "log_level": "INFO"
+  }
+}

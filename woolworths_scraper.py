@@ -19,87 +19,87 @@ WOOLWORTHS_CATEGORIES = {
     'fruit-vegetables': {
         'name': 'Fruit, Vegetables & Salads',
         'url': 'https://www.woolworths.co.za/cat/Food/Fruit-Vegetables-Salads/_/N-lllnam',
-        'paginated': 'https://www.woolworths.co.za/cat/Food/Fruit-Vegetables-Salads/_/N-lllnam?No={page}&Nrpp=20'
+        'paginated': 'https://www.woolworths.co.za/cat/Food/Fruit-Vegetables-Salads/_/N-lllnam?No={page}&Nrpp=24'
     },
     'meat-poultry': {
         'name': 'Meat, Poultry & Fish',
         'url': 'https://www.woolworths.co.za/cat/Food/Meat-Poultry-Fish/_/N-d87rb7',
-        'paginated': 'https://www.woolworths.co.za/cat/Food/Meat-Poultry-Fish/_/N-d87rb7?No={page}&Nrpp=20'
+        'paginated': 'https://www.woolworths.co.za/cat/Food/Meat-Poultry-Fish/_/N-d87rb7?No={page}&Nrpp=24'
     },
     'dairy-eggs': {
         'name': 'Milk, Dairy & Eggs',
         'url': 'https://www.woolworths.co.za/cat/Food/Milk-Dairy-Eggs/_/N-1sqo44p',
-        'paginated': 'https://www.woolworths.co.za/cat/Food/Milk-Dairy-Eggs/_/N-1sqo44p?No={page}&Nrpp=20'
+        'paginated': 'https://www.woolworths.co.za/cat/Food/Milk-Dairy-Eggs/_/N-1sqo44p?No={page}&Nrpp=24'
     },
     'ready-meals': {
         'name': 'Ready Meals',
         'url': 'https://www.woolworths.co.za/cat/Food/Ready-Meals/_/N-s2csbp',
-        'paginated': 'https://www.woolworths.co.za/cat/Food/Ready-Meals/_/N-s2csbp?No={page}&Nrpp=20'
+        'paginated': 'https://www.woolworths.co.za/cat/Food/Ready-Meals/_/N-s2csbp?No={page}&Nrpp=24'
     },
     'deli-entertaining': {
         'name': 'Deli & Entertaining',
         'url': 'https://www.woolworths.co.za/cat/Food/Deli-Entertaining/_/N-13b8g51',
-        'paginated': 'https://www.woolworths.co.za/cat/Food/Deli-Entertaining/_/N-13b8g51?No={page}&Nrpp=20'
+        'paginated': 'https://www.woolworths.co.za/cat/Food/Deli-Entertaining/_/N-13b8g51?No={page}&Nrpp=24'
     },
     'food-to-go': {
         'name': 'Food To Go',
         'url': 'https://www.woolworths.co.za/cat/Food/Food-To-Go/_/N-11buko0',
-        'paginated': 'https://www.woolworths.co.za/cat/Food/Food-To-Go/_/N-11buko0?No={page}&Nrpp=20'
+        'paginated': 'https://www.woolworths.co.za/cat/Food/Food-To-Go/_/N-11buko0?No={page}&Nrpp=24'
     },
     'bakery': {
         'name': 'Bakery',
         'url': 'https://www.woolworths.co.za/cat/Food/Bakery/_/N-1bm2new',
-        'paginated': 'https://www.woolworths.co.za/cat/Food/Bakery/_/N-1bm2new?No={page}&Nrpp=20'
+        'paginated': 'https://www.woolworths.co.za/cat/Food/Bakery/_/N-1bm2new?No={page}&Nrpp=24'
     },
     'frozen-food': {
         'name': 'Frozen Food',
         'url': 'https://www.woolworths.co.za/cat/Food/Frozen-Food/_/N-j8pkwq',
-        'paginated': 'https://www.woolworths.co.za/cat/Food/Frozen-Food/_/N-j8pkwq?No={page}&Nrpp=20'
+        'paginated': 'https://www.woolworths.co.za/cat/Food/Frozen-Food/_/N-j8pkwq?No={page}&Nrpp=24'
     },
     'pantry': {
         'name': 'Pantry',
         'url': 'https://www.woolworths.co.za/cat/Food/Pantry/_/N-1lw4dzx',
-        'paginated': 'https://www.woolworths.co.za/cat/Food/Pantry/_/N-1lw4dzx?No={page}&Nrpp=20'
+        'paginated': 'https://www.woolworths.co.za/cat/Food/Pantry/_/N-1lw4dzx?No={page}&Nrpp=24'
     },
     'chocolates-sweets': {
         'name': 'Chocolates, Sweets & Snacks',
         'url': 'https://www.woolworths.co.za/cat/Food/Chocolates-Sweets-Snacks/_/N-1yz1i0m',
-        'paginated': 'https://www.woolworths.co.za/cat/Food/Chocolates-Sweets-Snacks/_/N-1yz1i0m?No={page}&Nrpp=20'
+        'paginated': 'https://www.woolworths.co.za/cat/Food/Chocolates-Sweets-Snacks/_/N-1yz1i0m?No={page}&Nrpp=24'
     },
     'beverages': {
         'name': 'Beverages & Juices',
         'url': 'https://www.woolworths.co.za/cat/Food/Beverages-Juices/_/N-mnxddc',
-        'paginated': 'https://www.woolworths.co.za/cat/Food/Beverages-Juices/_/N-mnxddc?No={page}&Nrpp=20'
+        'paginated': 'https://www.woolworths.co.za/cat/Food/Beverages-Juices/_/N-mnxddc?No={page}&Nrpp=24'
     },
     'pets': {
         'name': 'Pets',
         'url': 'https://www.woolworths.co.za/cat/Food/Pets/_/N-l1demz',
-        'paginated': 'https://www.woolworths.co.za/cat/Food/Pets/_/N-l1demz?No={page}&Nrpp=20'
+        'paginated': 'https://www.woolworths.co.za/cat/Food/Pets/_/N-l1demz?No={page}&Nrpp=24'
     },
     'household': {
         'name': 'Household',
         'url': 'https://www.woolworths.co.za/cat/Food/Household/_/N-vvikef',
-        'paginated': 'https://www.woolworths.co.za/cat/Food/Household/_/N-vvikef?No={page}&Nrpp=20'
+        'paginated': 'https://www.woolworths.co.za/cat/Food/Household/_/N-vvikef?No={page}&Nrpp=24'
     },
     'cleaning': {
         'name': 'Cleaning',
         'url': 'https://www.woolworths.co.za/cat/Food/Cleaning/_/N-o1v4pe',
-        'paginated': 'https://www.woolworths.co.za/cat/Food/Cleaning/_/N-o1v4pe?No={page}&Nrpp=20'
+        'paginated': 'https://www.woolworths.co.za/cat/Food/Cleaning/_/N-o1v4pe?No={page}&Nrpp=24'
     },
     'toiletries-health': {
         'name': 'Toiletries & Health',
         'url': 'https://www.woolworths.co.za/cat/Food/Toiletries-Health/_/N-1q1wl1r',
-        'paginated': 'https://www.woolworths.co.za/cat/Food/Toiletries-Health/_/N-1q1wl1r?No={page}&Nrpp=20'
+        'paginated': 'https://www.woolworths.co.za/cat/Food/Toiletries-Health/_/N-1q1wl1r?No={page}&Nrpp=24'
     },
     'kids': {
         'name': 'Kids',
         'url': 'https://www.woolworths.co.za/cat/Food/Kids/_/N-ymaf0z',
-        'paginated': 'https://www.woolworths.co.za/cat/Food/Kids/_/N-ymaf0z?No={page}&Nrpp=20'
+        'paginated': 'https://www.woolworths.co.za/cat/Food/Kids/_/N-ymaf0z?No={page}&Nrpp=24'
     },
     'flowers-plants': {
         'name': 'Flowers & Plants',
         'url': 'https://www.woolworths.co.za/cat/Food/Flowers-Plants/_/N-1z13rv1',
-        'paginated': 'https://www.woolworths.co.za/cat/Food/Flowers-Plants/_/N-1z13rv1?No={page}&Nrpp=20'
+        'paginated': 'https://www.woolworths.co.za/cat/Food/Flowers-Plants/_/N-1z13rv1?No={page}&Nrpp=24'
     }
 }
 
@@ -399,7 +399,8 @@ class WoolworthsScraper:
         
         for page_num in range(max_pages):
             # Calculate page offset (Woolworths uses No parameter)
-            page_offset = page_num * 20  # 20 products per page
+            # Pattern: No=(page-1)*24, Nrpp=24 (24 products per page)
+            page_offset = page_num * 24  # 24 products per page
             
             if page_num == 0:
                 page_url = self.base_category_url
