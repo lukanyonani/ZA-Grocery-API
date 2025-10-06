@@ -254,6 +254,7 @@ def store_products(products: List[Dict], store: str, category: str, compare: boo
     changes = []
     
     print(f"📊 Storing {len(products)} products for {store} {category}")
+    print(f"🔍 First product sample: {products[0] if products else 'No products'}")
     
     try:
         for product in products:
@@ -340,6 +341,7 @@ def store_products(products: List[Dict], store: str, category: str, compare: boo
         
         conn.commit()
         print(f"✅ Successfully stored {len(products)} products with {len(changes)} changes")
+        print(f"🔍 Database commit successful")
         return changes
         
     except Exception as e:
