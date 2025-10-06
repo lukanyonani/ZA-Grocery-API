@@ -10,10 +10,11 @@ from typing import List, Optional
 import asyncio
 import os
 from shoprite_scraper import ShopriteScraper
+from pnp_scraper import PnPScraper
 
 app = FastAPI(
-    title="Simple Shoprite API",
-    description="Simple API for Shoprite products - JSON responses only, no database",
+    title="Simple Grocery API",
+    description="Simple API for Shoprite and Pick n Pay products - JSON responses only, no database",
     version="1.0.0",
     docs_url="/docs",
     redoc_url="/redoc"
@@ -30,27 +31,33 @@ app.add_middleware(
 
 @app.get("/", 
          summary="API Information",
-         description="Get information about the Simple Shoprite API",
+         description="Get information about the Simple Grocery API",
          tags=["Info"])
 async def root():
     return {
-        "message": "Simple Shoprite API - JSON responses only",
+        "message": "Simple Grocery API - JSON responses only",
         "version": "1.0.0",
-        "endpoints": {
-            "all_products": "/api/shoprite/all-products",
-            "food_cupboard": "/api/shoprite/food-cupboard",
-            "fresh_meat_poultry": "/api/shoprite/fresh-meat-poultry",
-            "frozen_meat_poultry": "/api/shoprite/frozen-meat-poultry",
-            "milk_butter_eggs": "/api/shoprite/milk-butter-eggs",
-            "cheese": "/api/shoprite/cheese",
-            "yoghurt": "/api/shoprite/yoghurt",
-            "fresh_fruit": "/api/shoprite/fresh-fruit",
-            "fresh_vegetables": "/api/shoprite/fresh-vegetables",
-            "fresh_salad_herbs_dip": "/api/shoprite/fresh-salad-herbs-dip",
-            "bakery": "/api/shoprite/bakery",
-            "frozen_food": "/api/shoprite/frozen-food",
-            "chocolates_sweets": "/api/shoprite/chocolates-sweets",
-            "ready_meals": "/api/shoprite/ready-meals"
+        "stores": {
+            "shoprite": {
+                "all_products": "/api/shoprite/all-products",
+                "food_cupboard": "/api/shoprite/food-cupboard",
+                "fresh_meat_poultry": "/api/shoprite/fresh-meat-poultry",
+                "frozen_meat_poultry": "/api/shoprite/frozen-meat-poultry",
+                "milk_butter_eggs": "/api/shoprite/milk-butter-eggs",
+                "cheese": "/api/shoprite/cheese",
+                "yoghurt": "/api/shoprite/yoghurt",
+                "fresh_fruit": "/api/shoprite/fresh-fruit",
+                "fresh_vegetables": "/api/shoprite/fresh-vegetables",
+                "fresh_salad_herbs_dip": "/api/shoprite/fresh-salad-herbs-dip",
+                "bakery": "/api/shoprite/bakery",
+                "frozen_food": "/api/shoprite/frozen-food",
+                "chocolates_sweets": "/api/shoprite/chocolates-sweets",
+                "ready_meals": "/api/shoprite/ready-meals"
+            },
+            "picknpay": {
+                "all_products": "/api/picknpay/all-products",
+                "promotions": "/api/picknpay/promotions"
+            }
         },
         "parameters": {
             "page": "Page number (0-indexed, default: 0)",
@@ -478,6 +485,68 @@ async def get_shoprite_ready_meals(
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Ready Meals scraping failed: {str(e)}")
+
+# Pick n Pay Endpoints
+@app.get("/api/picknpay/all-products",
+         summary="Get All Pick n Pay Products",
+         description="Get all products from Pick n Pay with pagination support",
+         tags=["Pick n Pay"])
+async def get_picknpay_all_products(
+    page: int = Query(0, description="Page number (0-indexed, default: 0)", ge=0),
+    max_products: Optional[int] = Query(None, description="Maximum number of products to return (optional)")
+):
+    """Get all products from Pick n Pay"""
+    try:
+        scraper = PnPScraper()
+        
+        # For now, use the promotions scraper as it's the only working method
+        # TODO: Implement proper all-products scraping
+        products = scraper.scrape(max_pages=1)
+        
+        # Limit products if max_products is specified
+        if max_products and len(products) > max_products:
+            products = products[:max_products]
+        
+        return {
+            "message": f"Successfully scraped {len(products)} Pick n Pay products from page {page}",
+            "page": page,
+            "products_count": len(products),
+            "category": "All Products",
+            "products": products,
+            "url": "https://www.pnp.co.za/c/pnpbase?query=:relevance:allCategories:pnpbase"
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Pick n Pay scraping failed: {str(e)}")
+
+@app.get("/api/picknpay/promotions",
+         summary="Get Pick n Pay Promotions",
+         description="Get promotional products from Pick n Pay",
+         tags=["Pick n Pay"])
+async def get_picknpay_promotions(
+    page: int = Query(0, description="Page number (0-indexed, default: 0)", ge=0),
+    max_products: Optional[int] = Query(None, description="Maximum number of products to return (optional)")
+):
+    """Get promotional products from Pick n Pay"""
+    try:
+        scraper = PnPScraper()
+        
+        # Use the promotions scraper (this is what it's designed for)
+        products = scraper.scrape(max_pages=1)
+        
+        # Limit products if max_products is specified
+        if max_products and len(products) > max_products:
+            products = products[:max_products]
+        
+        return {
+            "message": f"Successfully scraped {len(products)} Pick n Pay promotional products from page {page}",
+            "page": page,
+            "products_count": len(products),
+            "category": "Promotions",
+            "products": products,
+            "url": "https://www.pnp.co.za/c/pnpbase?query=:relevance:allCategories:pnpbase:isOnPromotion:On%20Promotion"
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Pick n Pay promotions scraping failed: {str(e)}")
 
 if __name__ == "__main__":
     import uvicorn
