@@ -127,6 +127,7 @@ class ScrapeRequest(BaseModel):
     category: str
     max_pages: int = 1
     compare_with_existing: bool = True
+    force_fresh: bool = False  # New parameter to bypass cache
 
 class ProductResponse(BaseModel):
     id: int
@@ -410,8 +411,8 @@ async def scrape_products(request: ScrapeRequest, background_tasks: BackgroundTa
     """
     
     try:
-        # Check if we should scrape now (hourly check)
-        if not should_scrape_now(request.store, request.category):
+        # Check if we should scrape now (hourly check) - unless force_fresh is True
+        if not request.force_fresh and not should_scrape_now(request.store, request.category):
             return {
                 "message": f"Already scraped {request.store} {request.category} this hour",
                 "store": request.store,
@@ -429,8 +430,12 @@ async def scrape_products(request: ScrapeRequest, background_tasks: BackgroundTa
         # Initialize scraper based on store
         if request.store == "pnp":
             scraper = PnPScraper()  # PnP scraper doesn't use categories
+            # For PnP, we'll use a default category since it scrapes promotions
+            request.category = "promotions"
         elif request.store == "shoprite":
             scraper = ShopriteScraper()  # Shoprite scraper doesn't use categories
+            # For Shoprite, we'll use a default category since it scrapes food
+            request.category = "food"
         elif request.store == "woolworths":
             scraper = WoolworthsScraper(category=request.category)
         else:
@@ -456,10 +461,10 @@ async def scrape_products(request: ScrapeRequest, background_tasks: BackgroundTa
                 "changes": []
             }
         
-        # Check if products have changed (using hash comparison)
+        # Check if products have changed (using hash comparison) - unless force_fresh is True
         current_hash = create_products_hash(products)
         
-        if previous_hash and current_hash == previous_hash:
+        if not request.force_fresh and previous_hash and current_hash == previous_hash:
             # No changes detected, just update cache and return
             update_scraping_cache(request.store, request.category, products, 0)
             return {
