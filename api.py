@@ -371,38 +371,62 @@ async def root():
             "price_tracking": "Tracks price changes over time"
         },
         "endpoints": {
-            "scrape": "/api/scrape",
-            "products": "/api/products",
-            "price_changes": "/api/price-changes",
-            "categories": "/api/categories",
-            "stats": "/api/stats",
-            "scrape_status": "/api/scrape-status",
-            "shoprite_all_products": "/api/shoprite/all-products",
-            "shoprite_categories": {
-                "food_cupboard": "/api/shoprite/food-cupboard",
-                "fresh_meat_poultry": "/api/shoprite/fresh-meat-poultry",
-                "frozen_meat_poultry": "/api/shoprite/frozen-meat-poultry",
-                "milk_butter_eggs": "/api/shoprite/milk-butter-eggs",
-                "cheese": "/api/shoprite/cheese",
-                "yoghurt": "/api/shoprite/yoghurt",
-                "fresh_fruit": "/api/shoprite/fresh-fruit",
-                "fresh_vegetables": "/api/shoprite/fresh-vegetables",
-                "fresh_salad_herbs_dip": "/api/shoprite/fresh-salad-herbs-dip",
-                "bakery": "/api/shoprite/bakery",
-                "frozen_food": "/api/shoprite/frozen-food",
-                "chocolates_sweets": "/api/shoprite/chocolates-sweets",
-                "ready_meals": "/api/shoprite/ready-meals"
+            "core": {
+                "scrape": "/api/scrape",
+                "products": "/api/products",
+                "price_changes": "/api/price-changes",
+                "categories": "/api/categories",
+                "stats": "/api/stats",
+                "scrape_status": "/api/scrape-status",
+                "scheduler_status": "/api/scheduler-status",
+                "trigger_scrape": "/api/trigger-scrape",
+                "scrape_specific": "/api/scrape-specific",
+                "force_scrape": "/api/force-scrape",
+                "clear_cache": "/api/clear-cache"
             },
-            "woolworths_categories": {
-                "meat_poultry_fish": "/api/woolworths/meat-poultry-fish",
-                "milk_dairy_eggs": "/api/woolworths/milk-dairy-eggs",
-                "fruit_vegetables_salads": "/api/woolworths/fruit-vegetables-salads",
-                "bakery": "/api/woolworths/bakery",
-                "frozen_food": "/api/woolworths/frozen-food",
-                "pantry": "/api/woolworths/pantry",
-                "chocolates_sweets_snacks": "/api/woolworths/chocolates-sweets-snacks",
-                "ready_meals": "/api/woolworths/ready-meals"
+            "shoprite": {
+                "all_products": "/api/shoprite/all-products",
+                "categories": {
+                    "food_cupboard": "/api/shoprite/food-cupboard",
+                    "fresh_meat_poultry": "/api/shoprite/fresh-meat-poultry",
+                    "frozen_meat_poultry": "/api/shoprite/frozen-meat-poultry",
+                    "milk_butter_eggs": "/api/shoprite/milk-butter-eggs",
+                    "cheese": "/api/shoprite/cheese",
+                    "yoghurt": "/api/shoprite/yoghurt",
+                    "fresh_fruit": "/api/shoprite/fresh-fruit",
+                    "fresh_vegetables": "/api/shoprite/fresh-vegetables",
+                    "fresh_salad_herbs_dip": "/api/shoprite/fresh-salad-herbs-dip",
+                    "bakery": "/api/shoprite/bakery",
+                    "frozen_food": "/api/shoprite/frozen-food",
+                    "chocolates_sweets": "/api/shoprite/chocolates-sweets",
+                    "ready_meals": "/api/shoprite/ready-meals"
+                }
+            },
+            "woolworths": {
+                "categories": {
+                    "meat_poultry_fish": "/api/woolworths/meat-poultry-fish",
+                    "milk_dairy_eggs": "/api/woolworths/milk-dairy-eggs",
+                    "fruit_vegetables_salads": "/api/woolworths/fruit-vegetables-salads",
+                    "bakery": "/api/woolworths/bakery",
+                    "frozen_food": "/api/woolworths/frozen-food",
+                    "pantry": "/api/woolworths/pantry",
+                    "chocolates_sweets_snacks": "/api/woolworths/chocolates-sweets-snacks",
+                    "ready_meals": "/api/woolworths/ready-meals"
+                }
             }
+        },
+        "pagination": {
+            "shoprite": "Uses page parameter (0-indexed)",
+            "woolworths": "Uses page parameter (0-indexed, No=page*24)"
+        },
+        "features": {
+            "hourly_scraping": "Only scrapes once per hour per store/category",
+            "change_detection": "Only stores data when changes are detected",
+            "smart_caching": "Avoids unnecessary scraping and database writes",
+            "price_tracking": "Tracks price changes over time",
+            "pagination_support": "All category endpoints support pagination",
+            "product_limiting": "All endpoints support max_products parameter",
+            "category_tagging": "Products stored with proper category names"
         },
         "documentation": {
             "swagger_ui": "/docs",
