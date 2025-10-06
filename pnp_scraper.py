@@ -159,6 +159,9 @@ class PnPScraper:
                 product = self.extract_product_data(container)
                 if product and product.get('name'):
                     products.append(product)
+                    print(f"✓ Added product: {product.get('name')}")
+                else:
+                    print(f"⚠️  Skipped product {idx}: name={product.get('name') if product else 'None'}")
             except Exception as e:
                 print(f"Error parsing product {idx}: {e}")
                 continue
@@ -182,25 +185,31 @@ class PnPScraper:
             'scraped_at': datetime.now().isoformat()
         }
         
-        # Extract product name - try multiple approaches
-        name_selectors = [
-            'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
-            '.product-name', '.product-title', '.item-name', '.product-title',
-            '[data-testid*="name"]', '[data-testid*="title"]',
-            'a[title]', 'span[title]', '.title', '.name',
-            # PnP specific selectors
-            '.product-grid-item-title',
-            '.catalog-item-title',
-            '.search-result-title'
-        ]
+        # Extract from data attributes (PnP specific)
+        product['name'] = container.get('data-cnstrc-item-name')
+        product['price'] = container.get('data-cnstrc-item-price')
+        product['product_id'] = container.get('data-cnstrc-item-id')
         
-        for selector in name_selectors:
-            name_elem = container.select_one(selector)
-            if name_elem:
-                name_text = name_elem.get_text().strip()
-                if name_text and len(name_text) > 3:  # Valid name
-                    product['name'] = name_text
-                    break
+        # If data attributes not found, try traditional selectors
+        if not product['name']:
+            name_selectors = [
+                'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
+                '.product-name', '.product-title', '.item-name', '.product-title',
+                '[data-testid*="name"]', '[data-testid*="title"]',
+                'a[title]', 'span[title]', '.title', '.name',
+                # PnP specific selectors
+                '.product-grid-item-title',
+                '.catalog-item-title',
+                '.search-result-title'
+            ]
+            
+            for selector in name_selectors:
+                name_elem = container.select_one(selector)
+                if name_elem:
+                    name_text = name_elem.get_text().strip()
+                    if name_text and len(name_text) > 3:  # Valid name
+                        product['name'] = name_text
+                        break
         
         # If no name found, try getting text from the container itself
         if not product['name']:
@@ -296,12 +305,14 @@ class PnPScraper:
         
         return product
     
-    def scrape(self, max_pages: int = 1) -> List[Dict]:
+    def scrape(self, max_pages: int = 1, url: str = None) -> List[Dict]:
         """Main scraping method using Selenium"""
         print("=" * 80)
         print("Pick n Pay Promotions Scraper (Selenium)")
         print("=" * 80)
-        print(f"\nTarget URL: {self.promotions_url}")
+        
+        target_url = url or self.promotions_url
+        print(f"\nTarget URL: {target_url}")
         print(f"Max pages to scrape: {max_pages}\n")
         
         # Setup Chrome driver
@@ -316,7 +327,7 @@ class PnPScraper:
                 print(f"🔄 Scraping page {page}...")
                 
                 # Navigate to the page
-                self.driver.get(self.promotions_url)
+                self.driver.get(target_url)
                 
                 # Wait for page to load
                 try:

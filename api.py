@@ -499,9 +499,9 @@ async def get_picknpay_all_products(
     try:
         scraper = PnPScraper()
         
-        # For now, use the promotions scraper as it's the only working method
-        # TODO: Implement proper all-products scraping
-        products = scraper.scrape(max_pages=1)
+        # Use the scraper with the correct URL
+        url = "https://www.pnp.co.za/c/pnpbase?query=:relevance:allCategories:pnpbase"
+        products = scraper.scrape(max_pages=1, url=url)
         
         # Limit products if max_products is specified
         if max_products and len(products) > max_products:
