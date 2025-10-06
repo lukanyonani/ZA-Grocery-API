@@ -933,7 +933,7 @@ async def get_shoprite_all_products(
         print(f"URL: {url}")
         
         # Scrape products from the specific page
-        products = scraper.scrape_category(max_pages=1, max_products=max_products)
+        products = scraper.scrape(url=url, max_pages=1, max_products=max_products)
         
         if not products:
             return {
@@ -990,7 +990,7 @@ async def get_shoprite_food_cupboard(
             url = f"https://www.shoprite.co.za/c-2413/All-Departments/Food?q=%3Arelevance%3AallCategories%3Afood_cupboard%3AbrowseAllStoresFacetOff%3AbrowseAllStoresFacetOff&page={page}"
         
         print(f"🔄 Scraping Shoprite Food Cupboard - Page {page}")
-        products = scraper.scrape_category(max_pages=1, max_products=max_products)
+        products = scraper.scrape(url=url, max_pages=1, max_products=max_products)
         
         if not products:
             return {"message": f"No Food Cupboard products found on page {page}", "page": page, "products_count": 0, "products": [], "category": "Food Cupboard"}
@@ -1028,7 +1028,7 @@ async def get_shoprite_fresh_meat_poultry(
         else:
             url = f"https://www.shoprite.co.za/c-2413/All-Departments/Food?q=%3Arelevance%3AallCategories%3Afresh_meat_and_poultry%3AbrowseAllStoresFacetOff%3AbrowseAllStoresFacetOff&page={page}"
         
-        products = scraper.scrape_category(max_pages=1, max_products=max_products)
+        products = scraper.scrape(url=url, max_pages=1, max_products=max_products)
         
         if not products:
             return {"message": f"No Fresh Meat & Poultry products found on page {page}", "page": page, "products_count": 0, "products": [], "category": "Fresh Meat & Poultry"}
@@ -1064,7 +1064,7 @@ async def get_shoprite_frozen_meat_poultry(
         else:
             url = f"https://www.shoprite.co.za/c-2413/All-Departments/Food?q=%3Arelevance%3AallCategories%3Afrozen_meat_and_poultry%3AbrowseAllStoresFacetOff%3AbrowseAllStoresFacetOff&page={page}"
         
-        products = scraper.scrape_category(max_pages=1, max_products=max_products)
+        products = scraper.scrape(url=url, max_pages=1, max_products=max_products)
         
         if not products:
             return {"message": f"No Frozen Meat & Poultry products found on page {page}", "page": page, "products_count": 0, "products": [], "category": "Frozen Meat & Poultry"}
@@ -1100,7 +1100,7 @@ async def get_shoprite_milk_butter_eggs(
         else:
             url = f"https://www.shoprite.co.za/c-2413/All-Departments/Food?q=%3Arelevance%3AallCategories%3Amilk_butter_and_eggs%3AbrowseAllStoresFacetOff%3AbrowseAllStoresFacetOff&page={page}"
         
-        products = scraper.scrape_category(max_pages=1, max_products=max_products)
+        products = scraper.scrape(url=url, max_pages=1, max_products=max_products)
         
         if not products:
             return {"message": f"No Milk, Butter & Eggs products found on page {page}", "page": page, "products_count": 0, "products": [], "category": "Milk, Butter & Eggs"}
@@ -1136,7 +1136,7 @@ async def get_shoprite_cheese(
         else:
             url = f"https://www.shoprite.co.za/c-2413/All-Departments/Food?q=%3Arelevance%3AallCategories%3Acheese%3AbrowseAllStoresFacetOff%3AbrowseAllStoresFacetOff&page={page}"
         
-        products = scraper.scrape_category(max_pages=1, max_products=max_products)
+        products = scraper.scrape(url=url, max_pages=1, max_products=max_products)
         
         if not products:
             return {"message": f"No Cheese products found on page {page}", "page": page, "products_count": 0, "products": [], "category": "Cheese"}
@@ -1172,7 +1172,7 @@ async def get_shoprite_yoghurt(
         else:
             url = f"https://www.shoprite.co.za/c-2413/All-Departments/Food?q=%3Arelevance%3AallCategories%3Ayoghurt%3AbrowseAllStoresFacetOff%3AbrowseAllStoresFacetOff&page={page}"
         
-        products = scraper.scrape_category(max_pages=1, max_products=max_products)
+        products = scraper.scrape(url=url, max_pages=1, max_products=max_products)
         
         if not products:
             return {"message": f"No Yoghurt products found on page {page}", "page": page, "products_count": 0, "products": [], "category": "Yoghurt"}
@@ -1208,7 +1208,7 @@ async def get_shoprite_fresh_fruit(
         else:
             url = f"https://www.shoprite.co.za/c-2413/All-Departments/Food?q=%3Arelevance%3AallCategories%3Afresh_fruit%3AbrowseAllStoresFacetOff%3AbrowseAllStoresFacetOff&page={page}"
         
-        products = scraper.scrape_category(max_pages=1, max_products=max_products)
+        products = scraper.scrape(url=url, max_pages=1, max_products=max_products)
         
         if not products:
             return {"message": f"No Fresh Fruit products found on page {page}", "page": page, "products_count": 0, "products": [], "category": "Fresh Fruit"}
@@ -1244,7 +1244,7 @@ async def get_shoprite_fresh_vegetables(
         else:
             url = f"https://www.shoprite.co.za/c-2413/All-Departments/Food?q=%3Arelevance%3AallCategories%3Afresh_vegetables%3AbrowseAllStoresFacetOff%3AbrowseAllStoresFacetOff&page={page}"
         
-        products = scraper.scrape_category(max_pages=1, max_products=max_products)
+        products = scraper.scrape(url=url, max_pages=1, max_products=max_products)
         
         if not products:
             return {"message": f"No Fresh Vegetables products found on page {page}", "page": page, "products_count": 0, "products": [], "category": "Fresh Vegetables"}
@@ -1280,7 +1280,7 @@ async def get_shoprite_fresh_salad_herbs_dip(
         else:
             url = f"https://www.shoprite.co.za/c-2413/All-Departments/Food?q=%3Arelevance%3AallCategories%3Afresh_salad_herbs_and_dip%3AbrowseAllStoresFacetOff%3AbrowseAllStoresFacetOff&page={page}"
         
-        products = scraper.scrape_category(max_pages=1, max_products=max_products)
+        products = scraper.scrape(url=url, max_pages=1, max_products=max_products)
         
         if not products:
             return {"message": f"No Fresh Salad, Herbs & Dip products found on page {page}", "page": page, "products_count": 0, "products": [], "category": "Fresh Salad, Herbs & Dip"}
@@ -1316,7 +1316,7 @@ async def get_shoprite_bakery(
         else:
             url = f"https://www.shoprite.co.za/c-2413/All-Departments/Food?q=%3Arelevance%3AallCategories%3Abakery%3AbrowseAllStoresFacetOff%3AbrowseAllStoresFacetOff&page={page}"
         
-        products = scraper.scrape_category(max_pages=1, max_products=max_products)
+        products = scraper.scrape(url=url, max_pages=1, max_products=max_products)
         
         if not products:
             return {"message": f"No Bakery products found on page {page}", "page": page, "products_count": 0, "products": [], "category": "Bakery"}
@@ -1352,7 +1352,7 @@ async def get_shoprite_frozen_food(
         else:
             url = f"https://www.shoprite.co.za/c-2413/All-Departments/Food?q=%3Arelevance%3AallCategories%3Afrozen_food%3AbrowseAllStoresFacetOff%3AbrowseAllStoresFacetOff&page={page}"
         
-        products = scraper.scrape_category(max_pages=1, max_products=max_products)
+        products = scraper.scrape(url=url, max_pages=1, max_products=max_products)
         
         if not products:
             return {"message": f"No Frozen Food products found on page {page}", "page": page, "products_count": 0, "products": [], "category": "Frozen Food"}
@@ -1388,7 +1388,7 @@ async def get_shoprite_chocolates_sweets(
         else:
             url = f"https://www.shoprite.co.za/c-2413/All-Departments/Food?q=%3Arelevance%3AallCategories%3Achocolates_and_sweets%3AbrowseAllStoresFacetOff%3AbrowseAllStoresFacetOff&page={page}"
         
-        products = scraper.scrape_category(max_pages=1, max_products=max_products)
+        products = scraper.scrape(url=url, max_pages=1, max_products=max_products)
         
         if not products:
             return {"message": f"No Chocolates & Sweets products found on page {page}", "page": page, "products_count": 0, "products": [], "category": "Chocolates & Sweets"}
@@ -1424,7 +1424,7 @@ async def get_shoprite_ready_meals(
         else:
             url = f"https://www.shoprite.co.za/c-2413/All-Departments/Food?q=%3Arelevance%3AallCategories%3Aready_meals%3AbrowseAllStoresFacetOff%3AbrowseAllStoresFacetOff&page={page}"
         
-        products = scraper.scrape_category(max_pages=1, max_products=max_products)
+        products = scraper.scrape(url=url, max_pages=1, max_products=max_products)
         
         if not products:
             return {"message": f"No Ready Meals products found on page {page}", "page": page, "products_count": 0, "products": [], "category": "Ready Meals"}
@@ -1462,7 +1462,7 @@ async def get_woolworths_meat_poultry_fish(
         scraper = WoolworthsScraper(category='meat-poultry')
         
         print(f"🔄 Scraping Woolworths Meat, Poultry & Fish - Page {page}")
-        products = scraper.scrape_category(max_pages=1, max_products=max_products)
+        products = scraper.scrape(url=url, max_pages=1, max_products=max_products)
         
         if not products:
             return {"message": f"No Meat, Poultry & Fish products found on page {page}", "page": page, "products_count": 0, "products": [], "category": "Meat, Poultry & Fish"}
@@ -1494,7 +1494,7 @@ async def get_woolworths_fruit_vegetables_salads(
         scraper = WoolworthsScraper(category='fruit-vegetables')
         
         print(f"🔄 Scraping Woolworths Fruit, Vegetables & Salads - Page {page}")
-        products = scraper.scrape_category(max_pages=1, max_products=max_products)
+        products = scraper.scrape(url=url, max_pages=1, max_products=max_products)
         
         if not products:
             return {"message": f"No Fruit, Vegetables & Salads products found on page {page}", "page": page, "products_count": 0, "products": [], "category": "Fruit, Vegetables & Salads"}
