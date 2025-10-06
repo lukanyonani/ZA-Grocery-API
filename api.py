@@ -247,18 +247,24 @@ def store_products(products: List[Dict], store: str, category: str, compare: boo
     """Store scraped products in PostgreSQL"""
     conn = get_db_connection()
     if not conn:
+        print("❌ Database connection failed")
         return []
     
     cursor = conn.cursor(cursor_factory=RealDictCursor)
     changes = []
     
+    print(f"📊 Storing {len(products)} products for {store} {category}")
+    
     try:
         for product in products:
+            # Get product ID with fallback
+            product_id = product.get('product_code', '') or f"fallback_{hash(product.get('name', ''))}"
+            
             # Check if product exists
             cursor.execute("""
                 SELECT id, price FROM products 
                 WHERE store = %s AND product_id = %s
-            """, (store, product.get('product_code', '')))
+            """, (store, product_id))
             
             existing = cursor.fetchone()
             
@@ -305,7 +311,9 @@ def store_products(products: List[Dict], store: str, category: str, compare: boo
                         WHERE id = %s
                     """, (datetime.now(), True, existing['id']))
             else:
-                # New product
+                # New product - use a fallback ID if product_code is empty
+                product_id = product.get('product_code', '') or f"fallback_{hash(product.get('name', ''))}"
+                
                 cursor.execute("""
                     INSERT INTO products (store, category, product_id, name, price, image_url, scraped_at, is_available)
                     VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
@@ -318,7 +326,7 @@ def store_products(products: List[Dict], store: str, category: str, compare: boo
                 """, (
                     store,
                     category,
-                    product.get('product_code', ''),
+                    product_id,
                     product.get('name', ''),
                     product.get('price', 0),
                     product.get('image_url', ''),
@@ -327,10 +335,11 @@ def store_products(products: List[Dict], store: str, category: str, compare: boo
                 ))
         
         conn.commit()
+        print(f"✅ Successfully stored {len(products)} products with {len(changes)} changes")
         return changes
         
     except Exception as e:
-        print(f"Database error: {e}")
+        print(f"❌ Database error: {e}")
         conn.rollback()
         return []
     finally:
