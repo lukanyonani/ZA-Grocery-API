@@ -8,6 +8,7 @@ from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from typing import List, Optional
 import asyncio
+import os
 from shoprite_scraper import ShopriteScraper
 
 app = FastAPI(
