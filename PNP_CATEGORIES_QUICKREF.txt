@@ -1,0 +1,150 @@
+╔═══════════════════════════════════════════════════════════════════════════╗
+║           PICK N PAY - 25 CATEGORIES NOW AVAILABLE!                       ║
+╚═══════════════════════════════════════════════════════════════════════════╝
+
+QUICK START
+───────────────────────────────────────────────────────────────────────────
+
+from pnp_scraper_v2 import PnPSmartScraper, list_categories
+
+# List all categories
+list_categories()
+
+# Scrape a category
+scraper = PnPSmartScraper(category='snacks')
+products = scraper.scrape(max_pages=2)
+scraper.save_json()  # Auto-saves to pnp_snacks_products.json
+
+
+AVAILABLE CATEGORIES (25 Total)
+───────────────────────────────────────────────────────────────────────────
+
+FOOD & GROCERIES:
+  food-cupboard        Food Cupboard
+  snacks               Chocolates, Chips & Snacks  
+  beverages            Beverages
+  dairy                Milk, Dairy & Eggs
+  frozen               Frozen Food
+  coffee-tea           Coffee, Tea & Hot Drinks
+  fresh-produce        Fresh Fruit & Vegetables
+  bakery               Bakery
+  meat                 Fresh Meat, Poultry & Seafood
+  ready-meals          Ready Meals & Desserts
+  deli                 Deli & Party
+
+HOUSEHOLD:
+  household            Household & Cleaning
+  home                 Home & Appliances
+  home-appliances      Home, Appliances & Outdoor
+  outdoor              Outdoor & DIY
+
+PERSONAL:
+  personal-care        Personal Care & Hygiene
+  health               Health & Wellness
+  baby                 Baby
+
+PETS & OTHER:
+  pet                  Pet Care
+  liquor               Liquor Store
+  electronics          Electronics & Office
+  stationery           Stationery
+  toys                 Toys & Games
+  flowers              Flowers & Plants
+
+PROMOTIONS:
+  promotions           Promotions (All categories)
+
+
+USAGE EXAMPLES
+───────────────────────────────────────────────────────────────────────────
+
+Single Category:
+  scraper = PnPSmartScraper(category='beverages')
+  products = scraper.scrape(max_pages=3)
+
+Multiple Categories:
+  for cat in ['snacks', 'beverages', 'dairy']:
+      scraper = PnPSmartScraper(category=cat)
+      products = scraper.scrape(max_pages=1)
+      scraper.save_json()
+
+With Limits:
+  scraper = PnPSmartScraper(category='liquor')
+  products = scraper.scrape(max_pages=5, max_products=100)
+
+
+FILE NAMING
+───────────────────────────────────────────────────────────────────────────
+
+Auto-naming by category:
+  category='snacks'    → pnp_snacks_products.json
+  category='beverages' → pnp_beverages_products.json
+  category='liquor'    → pnp_liquor_products.json
+
+Custom naming:
+  scraper.save_json('my_custom_name.json')
+  scraper.save_csv('my_custom_name.csv')
+
+
+PERFORMANCE
+───────────────────────────────────────────────────────────────────────────
+
+Time per page:    ~30-35 seconds
+Products/page:    ~30-80 (varies by category)
+Delay between:    3 seconds
+
+1 page  = ~30 sec   (~30-80 products)
+2 pages = ~65 sec   (~60-160 products)
+5 pages = ~170 sec  (~150-400 products)
+
+
+TEST RESULTS
+───────────────────────────────────────────────────────────────────────────
+
+Snacks (1 page):      78 products in 31 seconds
+Beverages (2 pages):  ~130 products in 65 seconds  
+Promotions (2 pages): 174 products in 65 seconds
+
+
+COMMAND LINE
+───────────────────────────────────────────────────────────────────────────
+
+Edit main() in pnp_scraper_v2.py:
+  scraper = PnPSmartScraper(category='beverages')
+  products = scraper.scrape(max_pages=3)
+
+Then run:
+  python3 pnp_scraper_v2.py
+
+
+FEATURES
+───────────────────────────────────────────────────────────────────────────
+
+✅ 25 categories supported
+✅ Full pagination on all categories
+✅ Auto file naming by category
+✅ Same API for all categories
+✅ Network API capture (high quality data)
+✅ Custom filename support
+✅ Product limit support
+✅ Error handling
+
+
+FILES
+───────────────────────────────────────────────────────────────────────────
+
+pnp_scraper_v2.py                Main scraper (with categories)
+pnp_categories_examples.py       Usage examples
+PNP_CATEGORIES_GUIDE.md          Complete guide
+PNP_PAGINATION_GUIDE.md          Pagination guide
+PNP_CATEGORIES_QUICKREF.txt      This file
+
+
+═══════════════════════════════════════════════════════════════════════════
+
+  🎉 25 Categories | Full Pagination | Auto-Naming | Production Ready
+  
+  Updated: October 6, 2025
+  Status: ✅ Working
+
+═══════════════════════════════════════════════════════════════════════════

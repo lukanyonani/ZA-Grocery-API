@@ -1,0 +1,73 @@
+╔═══════════════════════════════════════════════════════════════════════════╗
+║             SHOPRITE PAGINATION - QUICK REFERENCE                         ║
+╚═══════════════════════════════════════════════════════════════════════════╝
+
+BASIC USAGE
+───────────────────────────────────────────────────────────────────────────
+
+from shoprite_scraper import ShopriteScraper
+
+scraper = ShopriteScraper()
+products = scraper.scrape(max_pages=3)  # 3 pages = 60 products
+scraper.save_json()
+
+
+PARAMETERS
+───────────────────────────────────────────────────────────────────────────
+
+scrape(url=None, max_pages=1, max_products=None)
+
+• url           Custom URL (specific page)
+• max_pages     Number of pages to scrape
+• max_products  Stop after N products
+
+
+EXAMPLES
+───────────────────────────────────────────────────────────────────────────
+
+Single page:      scraper.scrape(max_pages=1)
+Multiple pages:   scraper.scrape(max_pages=5)
+With limit:       scraper.scrape(max_pages=10, max_products=50)
+Specific URL:     scraper.scrape(url="...&page=5")
+
+
+TIMING
+───────────────────────────────────────────────────────────────────────────
+
+1 page    = ~2 seconds
+5 pages   = ~12 seconds (includes 2s delays)
+20 pages  = ~42 seconds
+179 pages = ~6 minutes (all 3,578 products)
+
+
+URL PATTERN
+───────────────────────────────────────────────────────────────────────────
+
+Page 1: https://www.shoprite.co.za/c-2413/All-Departments/Food
+Page 2: https://...Food?q=:relevance:browseAllStoresFacetOff:...&page=1
+Page 3: https://...Food?q=:relevance:browseAllStoresFacetOff:...&page=2
+
+(Zero-indexed: page 0, page 1, page 2, etc.)
+
+
+COMMAND LINE
+───────────────────────────────────────────────────────────────────────────
+
+# Edit main() in shoprite_scraper.py:
+products = scraper.scrape(max_pages=10)  # Change this number
+
+# Then run:
+python3 shoprite_scraper.py
+
+
+FILES
+───────────────────────────────────────────────────────────────────────────
+
+shoprite_scraper.py              Main scraper with pagination
+shoprite_pagination_examples.py  Usage examples  
+PAGINATION_GUIDE.md              Complete guide
+shoprite_products.json           Output data
+shoprite_products.csv            CSV format
+
+
+═══════════════════════════════════════════════════════════════════════════
