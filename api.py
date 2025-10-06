@@ -790,6 +790,110 @@ async def get_scheduler_status():
     
     return status
 
+@app.delete("/api/clear-cache")
+async def clear_scraping_cache(
+    store: Optional[str] = Query(None, description="Clear cache for specific store"),
+    category: Optional[str] = Query(None, description="Clear cache for specific category")
+):
+    """Clear scraping cache for debugging purposes"""
+    conn = get_db_connection()
+    if not conn:
+        raise HTTPException(status_code=500, detail="Database connection failed")
+    
+    cursor = conn.cursor()
+    try:
+        if store and category:
+            # Clear specific store/category
+            cursor.execute("""
+                DELETE FROM scraping_cache 
+                WHERE store = %s AND category = %s
+            """, (store, category))
+            message = f"Cleared cache for {store} - {category}"
+        elif store:
+            # Clear all categories for store
+            cursor.execute("DELETE FROM scraping_cache WHERE store = %s", (store,))
+            message = f"Cleared cache for {store}"
+        else:
+            # Clear all cache
+            cursor.execute("DELETE FROM scraping_cache")
+            message = "Cleared all scraping cache"
+        
+        conn.commit()
+        return {"message": message, "status": "success"}
+        
+    except Exception as e:
+        conn.rollback()
+        raise HTTPException(status_code=500, detail=f"Failed to clear cache: {str(e)}")
+    finally:
+        cursor.close()
+        conn.close()
+
+@app.post("/api/force-scrape")
+async def force_scrape(
+    store: str,
+    category: str,
+    max_pages: int = 1,
+    clear_cache: bool = True
+):
+    """Force a fresh scrape bypassing the hourly cache"""
+    try:
+        # Clear cache if requested
+        if clear_cache:
+            conn = get_db_connection()
+            if conn:
+                cursor = conn.cursor()
+                cursor.execute("""
+                    DELETE FROM scraping_cache 
+                    WHERE store = %s AND category = %s
+                """, (store, category))
+                conn.commit()
+                cursor.close()
+                conn.close()
+        
+        # Initialize scraper based on store
+        if store == "pnp":
+            scraper = PnPScraper(category=category)
+        elif store == "shoprite":
+            scraper = ShopriteScraper(category=category)
+        elif store == "woolworths":
+            scraper = WoolworthsScraper(category=category)
+        else:
+            raise HTTPException(status_code=400, detail="Invalid store. Use: pnp, shoprite, woolworths")
+        
+        # Scrape products
+        print(f"🔄 Force scraping {store} {category}...")
+        products = scraper.scrape_category(max_pages=max_pages)
+        
+        if not products:
+            return {
+                "message": "No products found",
+                "store": store,
+                "category": category,
+                "products_count": 0,
+                "price_changes": 0,
+                "changes": []
+            }
+        
+        # Store products in database
+        print(f"📊 Storing {len(products)} products...")
+        changes = store_products(products, store, category, True)
+        
+        # Update cache
+        update_scraping_cache(store, category, products, len(changes))
+        
+        return {
+            "message": f"Force scrape completed for {store} {category}",
+            "store": store,
+            "category": category,
+            "products_count": len(products),
+            "price_changes": len(changes),
+            "changes": changes[:10] if changes else []
+        }
+        
+    except Exception as e:
+        print(f"❌ Force scraping error: {e}")
+        raise HTTPException(status_code=500, detail=f"Force scraping failed: {str(e)}")
+
 # Update the startup event
 @app.on_event("startup")
 async def startup_event():
