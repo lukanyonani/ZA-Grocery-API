@@ -270,10 +270,14 @@ def store_products(products: List[Dict], store: str, category: str, compare: boo
             
             if existing:
                 # Product exists - check for price changes
-                if compare and existing['price'] != product.get('price', 0):
+                # Convert both prices to float for comparison
+                old_price_float = float(existing['price']) if existing['price'] is not None else 0.0
+                new_price_float = float(product.get('price', 0)) if product.get('price') is not None else 0.0
+                
+                if compare and old_price_float != new_price_float:
                     # Price changed
-                    old_price = existing['price']
-                    new_price = product.get('price', 0)
+                    old_price = old_price_float
+                    new_price = new_price_float
                     change_percent = ((new_price - old_price) / old_price) * 100 if old_price > 0 else 0
                     
                     changes.append({
