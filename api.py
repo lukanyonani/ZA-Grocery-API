@@ -422,9 +422,9 @@ async def scrape_products(request: ScrapeRequest, background_tasks: BackgroundTa
         
         # Initialize scraper based on store
         if request.store == "pnp":
-            scraper = PnPScraper(category=request.category)
+            scraper = PnPScraper()  # PnP scraper doesn't use categories
         elif request.store == "shoprite":
-            scraper = ShopriteScraper(category=request.category)
+            scraper = ShopriteScraper()  # Shoprite scraper doesn't use categories
         elif request.store == "woolworths":
             scraper = WoolworthsScraper(category=request.category)
         else:
@@ -432,7 +432,11 @@ async def scrape_products(request: ScrapeRequest, background_tasks: BackgroundTa
         
         # Scrape products
         print(f"🔄 Scraping {request.store} {request.category}...")
-        products = scraper.scrape_category(max_pages=request.max_pages)
+        if request.store == "woolworths":
+            products = scraper.scrape_category(max_pages=request.max_pages)
+        else:
+            # PnP and Shoprite use different method names
+            products = scraper.scrape(max_pages=request.max_pages)
         
         if not products:
             # Update cache even if no products found
@@ -852,9 +856,9 @@ async def force_scrape(
         
         # Initialize scraper based on store
         if store == "pnp":
-            scraper = PnPScraper(category=category)
+            scraper = PnPScraper()  # PnP scraper doesn't use categories
         elif store == "shoprite":
-            scraper = ShopriteScraper(category=category)
+            scraper = ShopriteScraper()  # Shoprite scraper doesn't use categories
         elif store == "woolworths":
             scraper = WoolworthsScraper(category=category)
         else:
@@ -862,7 +866,11 @@ async def force_scrape(
         
         # Scrape products
         print(f"🔄 Force scraping {store} {category}...")
-        products = scraper.scrape_category(max_pages=max_pages)
+        if store == "woolworths":
+            products = scraper.scrape_category(max_pages=max_pages)
+        else:
+            # PnP and Shoprite use different method names
+            products = scraper.scrape(max_pages=max_pages)
         
         if not products:
             return {
