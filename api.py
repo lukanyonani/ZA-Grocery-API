@@ -354,6 +354,47 @@ def store_products(products: List[Dict], store: str, category: str, compare: boo
         cursor.close()
         conn.close()
 
+def check_database_for_products(store: str, category: str, limit: int = 100):
+    """Check if products exist in database"""
+    conn = get_db_connection()
+    if not conn:
+        return None
+    
+    cursor = conn.cursor(cursor_factory=RealDictCursor)
+    
+    try:
+        query = """
+            SELECT * FROM products 
+            WHERE store = %s AND category = %s 
+            ORDER BY scraped_at DESC 
+            LIMIT %s
+        """
+        cursor.execute(query, (store, category, limit))
+        products = cursor.fetchall()
+        
+        if products:
+            print(f"✅ Found {len(products)} existing products in database")
+            return [dict(product) for product in products]
+        else:
+            print(f"❌ No products found in database for {store} - {category}")
+            return None
+            
+    except Exception as e:
+        print(f"❌ Database query error: {e}")
+        return None
+    finally:
+        cursor.close()
+        conn.close()
+
+def store_products_in_background(products: List[Dict], store: str, category: str):
+    """Store products in database (for background tasks)"""
+    try:
+        changes = store_products(products, store, category, True)
+        update_scraping_cache(store, category, products, len(changes))
+        print(f"✅ Background storage completed: {len(products)} products stored")
+    except Exception as e:
+        print(f"❌ Background storage error: {e}")
+
 # API Endpoints
 @app.get("/", 
          summary="API Information",
@@ -892,21 +933,28 @@ async def clear_scraping_cache(
 
 @app.get("/api/shoprite/all-products",
          summary="Get Shoprite All Products",
-         description="Get all products from Shoprite with pagination support. Uses the 'All Departments/Food' category with page-based pagination.",
+         description="Get all products from Shoprite with pagination support. Checks database first, then scrapes if needed.",
          response_description="Returns products from the specified page with pagination info",
          tags=["Shoprite"])
 async def get_shoprite_all_products(
     page: int = Query(0, description="Page number (0-indexed, default: 0)", ge=0),
-    max_products: Optional[int] = Query(None, description="Maximum number of products to return (optional)")
+    max_products: Optional[int] = Query(None, description="Maximum number of products to return (optional)"),
+    background_tasks: BackgroundTasks = None
 ):
     """
     Get all products from Shoprite with pagination support.
+    
+    **Logic:**
+    1. Check database for existing products
+    2. If found, return immediately from database
+    3. If not found, scrape fresh data
+    4. Return scraped data immediately
+    5. Save to database in background
     
     **Pagination:**
     - Page 0: https://www.shoprite.co.za/c-2413/All-Departments/Food
     - Page 1: https://www.shoprite.co.za/c-2413/All-Departments/Food?q=%3Arelevance%3AbrowseAllStoresFacetOff%3AbrowseAllStoresFacetOff&page=1
     - Page 2: https://www.shoprite.co.za/c-2413/All-Departments/Food?q=%3Arelevance%3AbrowseAllStoresFacetOff%3AbrowseAllStoresFacetOff&page=2
-    - etc.
     
     **Parameters:**
     - `page`: Page number (0-indexed, default: 0)
@@ -918,21 +966,41 @@ async def get_shoprite_all_products(
     - Product count and details
     """
     try:
-        # Initialize Shoprite scraper
+        category = "all-products"
+        
+        # Step 1: Check database first
+        print(f"🔍 Checking database for shoprite - {category}")
+        db_products = check_database_for_products("shoprite", category, limit=max_products or 100)
+        
+        if db_products and len(db_products) > 0:
+            # Found in database - return immediately
+            print(f"✅ Returning {len(db_products)} products from database")
+            return {
+                "message": f"Retrieved {len(db_products)} products from database",
+                "page": page,
+                "products_count": len(db_products),
+                "source": "database",
+                "products": db_products,
+                "pagination_info": {
+                    "current_page": page,
+                    "next_page": page + 1,
+                    "products_per_page": len(db_products)
+                }
+            }
+        
+        # Step 2: No data in database - scrape fresh data
+        print(f"🔄 No database results - scraping fresh data from Shoprite")
         scraper = ShopriteScraper()
         
         # Build URL based on page number
         if page == 0:
-            # First page doesn't need page parameter
             url = "https://www.shoprite.co.za/c-2413/All-Departments/Food"
         else:
-            # Subsequent pages need the page parameter
             url = f"https://www.shoprite.co.za/c-2413/All-Departments/Food?q=%3Arelevance%3AbrowseAllStoresFacetOff%3AbrowseAllStoresFacetOff&page={page}"
         
-        print(f"🔄 Scraping Shoprite all products - Page {page}")
         print(f"URL: {url}")
         
-        # Scrape products from the specific page
+        # Scrape products
         products = scraper.scrape(url=url, max_pages=1, max_products=max_products)
         
         if not products:
@@ -940,23 +1008,24 @@ async def get_shoprite_all_products(
                 "message": f"No products found on page {page}",
                 "page": page,
                 "products_count": 0,
+                "source": "scraper",
                 "products": [],
                 "url": url
             }
         
-        # Store products in database (with category "all-products" for this endpoint)
-        print(f"📊 Storing {len(products)} products from page {page}...")
-        changes = store_products(products, "shoprite", "all-products", True)
-        
-        # Update cache
-        update_scraping_cache("shoprite", "all-products", products, len(changes))
+        # Step 3: Return immediately and save to database in background
+        print(f"✅ Scraped {len(products)} products - returning immediately")
+        if background_tasks:
+            background_tasks.add_task(store_products_in_background, products, "shoprite", category)
+        else:
+            # If background_tasks not available, store synchronously
+            store_products_in_background(products, "shoprite", category)
         
         return {
             "message": f"Successfully scraped {len(products)} products from page {page}",
             "page": page,
             "products_count": len(products),
-            "price_changes": len(changes),
-            "changes": changes[:10] if changes else [],
+            "source": "scraper",
             "products": products,
             "url": url,
             "pagination_info": {
@@ -967,21 +1036,42 @@ async def get_shoprite_all_products(
         }
         
     except Exception as e:
-        print(f"❌ Shoprite all products scraping error: {e}")
-        raise HTTPException(status_code=500, detail=f"Shoprite all products scraping failed: {str(e)}")
+        print(f"❌ Shoprite all products error: {e}")
+        raise HTTPException(status_code=500, detail=f"Shoprite all products failed: {str(e)}")
 
 # Shoprite Category Endpoints
 @app.get("/api/shoprite/food-cupboard",
          summary="Get Shoprite Food Cupboard Products",
-         description="Get products from Shoprite Food Cupboard category with pagination support",
+         description="Get products from Shoprite Food Cupboard category. Checks database first, then scrapes if needed.",
          response_description="Returns products from the Food Cupboard category",
          tags=["Shoprite Categories"])
 async def get_shoprite_food_cupboard(
     page: int = Query(0, description="Page number (0-indexed, default: 0)", ge=0),
-    max_products: Optional[int] = Query(None, description="Maximum number of products to return (optional)")
+    max_products: Optional[int] = Query(None, description="Maximum number of products to return (optional)"),
+    background_tasks: BackgroundTasks = None
 ):
     """Get products from Shoprite Food Cupboard category"""
     try:
+        category = "Food Cupboard"
+        
+        # Step 1: Check database first
+        print(f"🔍 Checking database for shoprite - {category}")
+        db_products = check_database_for_products("shoprite", category, limit=max_products or 100)
+        
+        if db_products and len(db_products) > 0:
+            # Found in database - return immediately
+            print(f"✅ Returning {len(db_products)} products from database")
+            return {
+                "message": f"Retrieved {len(db_products)} Food Cupboard products from database",
+                "page": page,
+                "products_count": len(db_products),
+                "category": "Food Cupboard",
+                "source": "database",
+                "products": db_products
+            }
+        
+        # Step 2: No data in database - scrape fresh data
+        print(f"🔄 No database results - scraping fresh Food Cupboard data")
         scraper = ShopriteScraper()
         
         if page == 0:
@@ -989,22 +1079,31 @@ async def get_shoprite_food_cupboard(
         else:
             url = f"https://www.shoprite.co.za/c-2413/All-Departments/Food?q=%3Arelevance%3AallCategories%3Afood_cupboard%3AbrowseAllStoresFacetOff%3AbrowseAllStoresFacetOff&page={page}"
         
-        print(f"🔄 Scraping Shoprite Food Cupboard - Page {page}")
         products = scraper.scrape(url=url, max_pages=1, max_products=max_products)
         
         if not products:
-            return {"message": f"No Food Cupboard products found on page {page}", "page": page, "products_count": 0, "products": [], "category": "Food Cupboard"}
+            return {
+                "message": f"No Food Cupboard products found on page {page}",
+                "page": page,
+                "products_count": 0,
+                "category": "Food Cupboard",
+                "source": "scraper",
+                "products": []
+            }
         
-        # Store products with category
-        changes = store_products(products, "shoprite", "Food Cupboard", True)
-        update_scraping_cache("shoprite", "Food Cupboard", products, len(changes))
+        # Step 3: Return immediately and save to database in background
+        print(f"✅ Scraped {len(products)} Food Cupboard products - returning immediately")
+        if background_tasks:
+            background_tasks.add_task(store_products_in_background, products, "shoprite", category)
+        else:
+            store_products_in_background(products, "shoprite", category)
         
         return {
             "message": f"Successfully scraped {len(products)} Food Cupboard products from page {page}",
             "page": page,
             "products_count": len(products),
             "category": "Food Cupboard",
-            "price_changes": len(changes),
+            "source": "scraper",
             "products": products,
             "url": url
         }
